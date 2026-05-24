@@ -55,6 +55,13 @@ async function uploadImageBufferToZalo(buffer, filename) {
 }
 
 async function sendZaloButtons(userId, text, buttons) {
+  const btnPayload = buttons.map(b => ({
+    title: b.title,
+    type: 'oa.query.show',
+    payload: b.payload || b.title,
+  }));
+
+  // Thử format v2.0 template button
   try {
     const res = await zaloPost(
       'https://openapi.zalo.me/v2.0/oa/message',
@@ -63,29 +70,42 @@ async function sendZaloButtons(userId, text, buttons) {
         message: {
           attachment: {
             type: 'template',
-            payload: {
-              template_type: 'button',
-              text,
-              buttons: buttons.map(b => ({
-                title: b.title,
-                type: 'oa.query.show',
-                payload: b.payload || b.title,
-              })),
-            },
+            payload: { template_type: 'button', text, buttons: btnPayload },
           },
         },
       }
     );
-    if (res.data?.error !== 0) {
-      console.error('[Zalo] Lỗi gửi button, fallback text:', res.data);
-      const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
-      await sendZaloText(userId, `${text}\n\n${btnLabels}`);
-    }
+    if (res.data?.error === 0) return;
+    console.error('[Zalo Button v2] error:', res.data?.error, res.data?.message);
   } catch (err) {
-    console.error('[Zalo] Gửi button thất bại, fallback text:', err.message);
-    const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
-    await sendZaloText(userId, `${text}\n\n${btnLabels}`);
+    console.error('[Zalo Button v2] exception:', err.message);
   }
+
+  // Thử format v3.0 quick_replies
+  try {
+    const res = await zaloPost(
+      'https://openapi.zalo.me/v3.0/oa/message/cs',
+      {
+        recipient: { user_id: String(userId) },
+        message: {
+          text,
+          quick_replies: buttons.map(b => ({
+            title: b.title,
+            payload: b.payload || b.title,
+            image_icon: '',
+          })),
+        },
+      }
+    );
+    if (res.data?.error === 0) return;
+    console.error('[Zalo Button v3] error:', res.data?.error, res.data?.message);
+  } catch (err) {
+    console.error('[Zalo Button v3] exception:', err.message);
+  }
+
+  // Fallback: plain text
+  const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
+  await sendZaloText(userId, `${text}\n\n${btnLabels}`);
 }
 
 async function sendZaloGroupText(text) {
