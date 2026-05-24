@@ -71,7 +71,7 @@ app.post('/admin/set-tokens', async (req, res) => {
 
 // Zalo domain verification
 app.get('/zalo_verifierMy2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm.html', (req, res) => {
-  res.type('html').send('My2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm');
+  res.type('html').send('There Is No Limit To What You Can Accomplish Using Zalo!');
 });
 
 app.get('/health', (req, res) => {
