@@ -1,4 +1,4 @@
-const { sendZaloText } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloGroupText } = require('../utils/zaloApi');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const Feedback = require('../models/Feedback');
 
@@ -177,7 +177,7 @@ async function sendConfirmation(userId, state) {
 
 async function saveFeedback(userId, state) {
   try {
-    await Feedback.create({
+    const feedback = await Feedback.create({
       userId,
       displayName: state.displayName || '',
       contact: state.contact,
@@ -185,10 +185,25 @@ async function saveFeedback(userId, state) {
       imageUrl: state.imageUrl || '',
     });
     clearState(userId);
+
     await sendZaloText(userId,
       '✅ Đã tiếp nhận góp ý, cảm ơn bạn! Chúng tôi sẽ phản hồi sớm nhất 💙\n\n' +
       'Mọi ý kiến của bạn giúp UBND phường An Hải phục vụ người dân ngày càng tốt hơn.'
     );
+
+    const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const nameInfo = state.displayName ? `👤 Tên: ${state.displayName}\n` : '';
+    const imageInfo = state.imageUrl ? `🖼️ Ảnh: ${state.imageUrl}` : '🖼️ Ảnh: Không có';
+    const groupMsg =
+      `📩 GÓP Ý MỚI - ${now}\n` +
+      `${'─'.repeat(30)}\n` +
+      `${nameInfo}` +
+      `📞 Liên hệ: ${state.contact}\n` +
+      `📝 Nội dung:\n${state.content}\n` +
+      `${imageInfo}\n` +
+      `🆔 ID: ${feedback._id}`;
+
+    await sendZaloGroupText(groupMsg);
     console.log(`[Feedback] Đã lưu góp ý từ userId=${userId} contact=${state.contact}`);
   } catch (err) {
     console.error('[Feedback] Lưu DB thất bại:', err.message);

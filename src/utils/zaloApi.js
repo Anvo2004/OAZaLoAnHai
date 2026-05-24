@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getToken, refreshAccessToken } = require('./zaloToken');
+const CONFIG = require('../config');
 
 async function zaloPost(url, data) {
   const doRequest = (token) =>
@@ -53,4 +54,21 @@ async function uploadImageBufferToZalo(buffer, filename) {
   return attachmentId;
 }
 
-module.exports = { sendZaloText, uploadImageBufferToZalo };
+async function sendZaloGroupText(text) {
+  const groupId = CONFIG.ZALO_GROUP_ID;
+  if (!groupId) {
+    console.warn('[Zalo] ZALO_GROUP_ID chưa được cấu hình, bỏ qua gửi nhóm.');
+    return;
+  }
+  try {
+    const res = await zaloPost(
+      'https://openapi.zalo.me/v2.0/oa/message',
+      { recipient: { group_id: String(groupId) }, message: { text } }
+    );
+    if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi tin nhóm:', res.data);
+  } catch (err) {
+    console.error('[Zalo] Gửi tin nhóm thất bại:', err.message);
+  }
+}
+
+module.exports = { sendZaloText, sendZaloGroupText, uploadImageBufferToZalo };
