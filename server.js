@@ -74,7 +74,31 @@ app.get('/zalo_verifierMy2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm.html', (req, res) =>
   res.type('html').send('There Is No Limit To What You Can Accomplish Using Zalo!');
 });
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  const { code } = req.query;
+  if (code) {
+    try {
+      const axios = require('axios');
+      const params = new URLSearchParams();
+      params.append('code', code);
+      params.append('app_id', process.env.ZALO_APP_ID);
+      params.append('grant_type', 'authorization_code');
+      const r = await axios.post(
+        'https://oauth.zaloapp.com/v4/oa/access_token',
+        params,
+        { headers: { secret_key: process.env.ZALO_APP_SECRET, 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      const { access_token, refresh_token } = r.data;
+      if (access_token) {
+        await setTokensManually(access_token, refresh_token);
+        console.log('[OAuth] Lấy token mới từ OAuth thành công');
+        return res.type('html').send('<h2>✅ Cấp quyền thành công! Token đã lưu vào Redis. Bot sẵn sàng hoạt động.</h2>');
+      }
+      return res.type('html').send(`<h2>❌ Lỗi: ${JSON.stringify(r.data)}</h2>`);
+    } catch (err) {
+      return res.type('html').send(`<h2>❌ Lỗi: ${err.message}</h2>`);
+    }
+  }
   res.type('html').send(`<!DOCTYPE html><html><head><meta name="zalo-platform-site-verification" content="My2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm" /></head><body>UBND phuong An Hai - OA Zalo</body></html>`);
 });
 
