@@ -39,7 +39,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'anhai-goopy-secret-2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 8 * 60 * 60 * 1000 },
+  cookie: {
+    maxAge: 8 * 60 * 60 * 1000,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  },
 }));
 
 // Flash messages
