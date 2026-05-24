@@ -37,8 +37,9 @@ async function handleWebhook(body) {
     const contactAttachment = attachments.find(a => a.type === 'contact');
     if (contactAttachment) {
       const phone = contactAttachment.payload?.phone || contactAttachment.payload?.phoneNumber || '';
+      const contactName = contactAttachment.payload?.name || contactAttachment.payload?.display_name || displayName;
       if (phone) {
-        await handleContactCard(userId, phone, displayName);
+        await handleContactCard(userId, phone, contactName);
         return;
       }
     }

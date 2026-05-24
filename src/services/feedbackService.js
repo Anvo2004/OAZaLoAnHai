@@ -1,4 +1,4 @@
-const { sendZaloText, sendZaloButtons, sendZaloGroupText } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloButtons, sendZaloGroupText, getZaloUserProfile } = require('../utils/zaloApi');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const Feedback = require('../models/Feedback');
 
@@ -84,13 +84,13 @@ async function handleText(userId, text, displayName) {
       return;
     }
     setState(userId, { ...state, step: 'waiting_image', content: text.trim() });
-    await sendZaloButtons(userId,
+    await sendZaloText(userId,
       '📎 Bạn có muốn gửi hình ảnh minh hoạ không?\n\n' +
       '• Gửi URL ảnh (http/https)\n' +
       '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
-      '• Hoặc bấm nút bên dưới nếu không có ảnh',
-      [{ title: 'Không có hình ảnh' }]
+      '• Hoặc bấm nút bên dưới nếu không có ảnh'
     );
+    await sendZaloButtons(userId, 'Bạn có thể bấm nhanh:', [{ title: 'Không có hình ảnh' }]);
     return;
   }
 
@@ -113,13 +113,13 @@ async function handleText(userId, text, displayName) {
       }
       return;
     }
-    await sendZaloButtons(userId,
+    await sendZaloText(userId,
       '⚠️ Bạn đang ở bước gửi hình ảnh.\n\n' +
       '• Gửi URL ảnh (http/https)\n' +
       '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
-      '• Hoặc bấm nút bên dưới để bỏ qua',
-      [{ title: 'Không có hình ảnh' }]
+      '• Hoặc bấm nút bên dưới để bỏ qua'
     );
+    await sendZaloButtons(userId, 'Bạn có thể bấm nhanh:', [{ title: 'Không có hình ảnh' }]);
     return;
   }
 
@@ -175,24 +175,30 @@ async function handleContactCard(userId, phone, displayName) {
 
 async function sendConfirmation(userId, state) {
   const imageStatus = state.imageUrl ? '✅ Đã đính kèm ảnh' : '❌ Không có ảnh';
-  await sendZaloButtons(userId,
+  await sendZaloText(userId,
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
     `• Nội dung: ${state.content}\n` +
-    `• Hình ảnh: ${imageStatus}`,
-    [
-      { title: 'Xác nhận gửi' },
-      { title: 'Nhập lại' },
-      { title: 'Huỷ' },
-    ]
+    `• Hình ảnh: ${imageStatus}`
   );
+  await sendZaloButtons(userId, 'Vui lòng chọn:', [
+    { title: 'Xác nhận gửi' },
+    { title: 'Nhập lại' },
+    { title: 'Huỷ' },
+  ]);
 }
 
 async function saveFeedback(userId, state) {
   try {
+    let displayName = state.displayName || '';
+    if (!displayName) {
+      const profile = await getZaloUserProfile(userId);
+      displayName = profile?.display_name || '';
+    }
+
     const feedback = await Feedback.create({
       userId,
-      displayName: state.displayName || '',
+      displayName,
       contact: state.contact,
       content: state.content,
       imageUrl: state.imageUrl || '',
@@ -205,7 +211,7 @@ async function saveFeedback(userId, state) {
     );
 
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    const nameInfo = state.displayName ? `👤 Tên: ${state.displayName}\n` : '';
+    const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
     const imageInfo = state.imageUrl ? `🖼️ Ảnh: ${state.imageUrl}` : '🖼️ Ảnh: Không có';
     const groupMsg =
       `📩 GÓP Ý MỚI - ${now}\n` +

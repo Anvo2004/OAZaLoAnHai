@@ -105,4 +105,19 @@ async function sendZaloGroupText(text) {
   }
 }
 
-module.exports = { sendZaloText, sendZaloButtons, sendZaloGroupText, uploadImageBufferToZalo };
+async function getZaloUserProfile(userId) {
+  try {
+    const token = getToken();
+    const res = await axios.get(
+      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${encodeURIComponent(JSON.stringify({ user_id: String(userId) }))}`,
+      { headers: { access_token: token } }
+    );
+    if (res.data?.error === 0) return res.data.data;
+    return null;
+  } catch (err) {
+    console.error('[Zalo] Lấy profile thất bại:', err.message);
+    return null;
+  }
+}
+
+module.exports = { sendZaloText, sendZaloButtons, sendZaloGroupText, getZaloUserProfile, uploadImageBufferToZalo };
