@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
+const cors = require('cors');
 const session = require('express-session');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
@@ -10,6 +11,17 @@ const { handleWebhook } = require('./src/handlers/webhookHandler');
 const { setTokensManually } = require('./src/utils/zaloToken');
 
 const app = express();
+
+// CORS — cho phép Vercel frontend gọi API
+app.use(cors({
+  origin: [
+    /\.vercel\.app$/,
+    'http://localhost:5173',
+    'http://localhost:3001',
+    process.env.PUBLIC_URL,
+  ].filter(Boolean),
+  credentials: true,
+}));
 
 // View engine
 app.set('view engine', 'ejs');
