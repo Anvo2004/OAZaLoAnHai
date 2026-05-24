@@ -113,11 +113,12 @@ async function handleText(userId, text, displayName) {
       }
       return;
     }
-    await sendZaloText(userId,
-      '⚠️ Không nhận ra định dạng.\n\n' +
-      '• Gõ **Không có hình ảnh** để bỏ qua ảnh\n' +
-      '• Gửi **URL ảnh** (http/https)\n' +
-      '• Hoặc **gửi ảnh trực tiếp** từ điện thoại'
+    await sendZaloButtons(userId,
+      '⚠️ Bạn đang ở bước gửi hình ảnh.\n\n' +
+      '• Gửi URL ảnh (http/https)\n' +
+      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
+      '• Hoặc bấm nút bên dưới để bỏ qua',
+      [{ title: 'Không có hình ảnh' }]
     );
     return;
   }

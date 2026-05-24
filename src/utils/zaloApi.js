@@ -76,9 +76,15 @@ async function sendZaloButtons(userId, text, buttons) {
         },
       }
     );
-    if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi button:', res.data);
+    if (res.data?.error !== 0) {
+      console.error('[Zalo] Lỗi gửi button, fallback text:', res.data);
+      const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
+      await sendZaloText(userId, `${text}\n\n${btnLabels}`);
+    }
   } catch (err) {
-    console.error('[Zalo] Gửi button thất bại:', err.message);
+    console.error('[Zalo] Gửi button thất bại, fallback text:', err.message);
+    const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
+    await sendZaloText(userId, `${text}\n\n${btnLabels}`);
   }
 }
 
