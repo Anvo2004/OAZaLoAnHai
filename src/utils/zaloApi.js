@@ -54,6 +54,34 @@ async function uploadImageBufferToZalo(buffer, filename) {
   return attachmentId;
 }
 
+async function sendZaloButtons(userId, text, buttons) {
+  try {
+    const res = await zaloPost(
+      'https://openapi.zalo.me/v2.0/oa/message',
+      {
+        recipient: { user_id: String(userId) },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'button',
+              text,
+              buttons: buttons.map(b => ({
+                title: b.title,
+                type: 'oa.query.show',
+                payload: b.payload || b.title,
+              })),
+            },
+          },
+        },
+      }
+    );
+    if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi button:', res.data);
+  } catch (err) {
+    console.error('[Zalo] Gửi button thất bại:', err.message);
+  }
+}
+
 async function sendZaloGroupText(text) {
   const groupId = CONFIG.ZALO_GROUP_ID;
   if (!groupId) {
@@ -71,4 +99,4 @@ async function sendZaloGroupText(text) {
   }
 }
 
-module.exports = { sendZaloText, sendZaloGroupText, uploadImageBufferToZalo };
+module.exports = { sendZaloText, sendZaloButtons, sendZaloGroupText, uploadImageBufferToZalo };

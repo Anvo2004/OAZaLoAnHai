@@ -1,4 +1,4 @@
-const { sendZaloText, sendZaloGroupText } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloButtons, sendZaloGroupText } = require('../utils/zaloApi');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const Feedback = require('../models/Feedback');
 
@@ -84,12 +84,12 @@ async function handleText(userId, text, displayName) {
       return;
     }
     setState(userId, { ...state, step: 'waiting_image', content: text.trim() });
-    await sendZaloText(userId,
+    await sendZaloButtons(userId,
       '📎 Bạn có muốn gửi hình ảnh minh hoạ không?\n\n' +
-      '• Gõ **Không có hình ảnh** nếu không có\n' +
-      '• Hoặc gửi **URL ảnh** (http/https)\n' +
-      '• Hoặc **gửi ảnh trực tiếp** từ điện thoại\n\n' +
-      '(Nhắn "huỷ" để thoát)'
+      '• Gửi URL ảnh (http/https)\n' +
+      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
+      '• Hoặc bấm nút bên dưới nếu không có ảnh',
+      [{ title: 'Không có hình ảnh' }]
     );
     return;
   }
@@ -168,13 +168,17 @@ async function handleContactCard(userId, phone, displayName) {
 }
 
 async function sendConfirmation(userId, state) {
-  const imageStatus = state.imageUrl ? `✅ Đã đính kèm ảnh.` : '❌ Không có ảnh.';
-  await sendZaloText(userId,
+  const imageStatus = state.imageUrl ? '✅ Đã đính kèm ảnh' : '❌ Không có ảnh';
+  await sendZaloButtons(userId,
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
     `• Nội dung: ${state.content}\n` +
-    `• Hình ảnh: ${imageStatus}\n\n` +
-    'Vui lòng chọn: **Xác nhận gửi / Nhập lại / Hủy**'
+    `• Hình ảnh: ${imageStatus}`,
+    [
+      { title: 'Xác nhận gửi' },
+      { title: 'Nhập lại' },
+      { title: 'Huỷ' },
+    ]
   );
 }
 
