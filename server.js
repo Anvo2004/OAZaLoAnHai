@@ -69,6 +69,11 @@ app.post('/admin/set-tokens', async (req, res) => {
   }
 });
 
+// Zalo domain verification
+app.get('/zalo_verifierMy2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm.html', (req, res) => {
+  res.type('html').send('My2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm');
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'UBND phường An Hải - Góp ý', timestamp: new Date().toISOString() });
 });
