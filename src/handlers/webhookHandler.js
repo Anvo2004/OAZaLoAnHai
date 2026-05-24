@@ -43,13 +43,7 @@ async function handleWebhook(body) {
       }
     }
 
-    // Trigger luồng góp ý
-    if (isFeedbackTrigger(text)) {
-      await startFeedback(userId);
-      return;
-    }
-
-    // Xử lý trong luồng góp ý
+    // Xử lý trong luồng góp ý (trigger chỉ kích hoạt khi chưa có luồng đang chạy)
     await handleText(userId, text, displayName);
     return;
   }

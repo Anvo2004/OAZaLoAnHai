@@ -55,7 +55,10 @@ async function handleText(userId, text, displayName) {
     return;
   }
 
-  if (!state) return; // Không trong luồng → bỏ qua
+  if (!state) {
+    if (isFeedbackTrigger(text)) await startFeedback(userId);
+    return;
+  }
 
   if (state.step === 'waiting_contact') {
     if (!isPhone(text) && !isEmail(text)) {
