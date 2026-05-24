@@ -54,69 +54,9 @@ async function uploadImageBufferToZalo(buffer, filename) {
   return attachmentId;
 }
 
+// Zalo OA webhook API không hỗ trợ template button — dùng plain text với danh sách lựa chọn
 async function sendZaloButtons(userId, text, buttons) {
-  const btnPayload = buttons.map(b => ({
-    title: b.title,
-    type: 'oa.query.show',
-    payload: b.payload || b.title,
-  }));
-
-  // Thử v2 format "elements" (không dùng text + buttons mà dùng elements)
-  try {
-    const elements = btnPayload.map(b => ({
-      title: b.title,
-      subtitle: text,
-      image_url: '',
-      buttons: [b],
-    }));
-    const res = await zaloPost(
-      'https://openapi.zalo.me/v2.0/oa/message',
-      {
-        recipient: { user_id: String(userId) },
-        message: {
-          attachment: {
-            type: 'template',
-            payload: { template_type: 'button', elements },
-          },
-        },
-      }
-    );
-    if (res.data?.error === 0) return;
-    console.error('[Zalo Button elements] error:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo Button elements] exception:', err.message);
-  }
-
-  // Thử v2 format "list" template
-  try {
-    const res = await zaloPost(
-      'https://openapi.zalo.me/v2.0/oa/message',
-      {
-        recipient: { user_id: String(userId) },
-        message: {
-          attachment: {
-            type: 'template',
-            payload: {
-              template_type: 'list',
-              elements: btnPayload.map(b => ({
-                title: b.title,
-                subtitle: '',
-                image_url: '',
-                buttons: [b],
-              })),
-            },
-          },
-        },
-      }
-    );
-    if (res.data?.error === 0) return;
-    console.error('[Zalo Button list] error:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo Button list] exception:', err.message);
-  }
-
-  // Fallback: plain text
-  const btnLabels = buttons.map(b => `• ${b.title}`).join('\n');
+  const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
   await sendZaloText(userId, `${text}\n\n${btnLabels}`);
 }
 
