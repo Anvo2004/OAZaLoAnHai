@@ -61,7 +61,33 @@ async function sendZaloButtons(userId, text, buttons) {
     payload: b.payload || b.title,
   }));
 
-  // Thử format v2.0 template button
+  // Thử v2 format "elements" (không dùng text + buttons mà dùng elements)
+  try {
+    const elements = btnPayload.map(b => ({
+      title: b.title,
+      subtitle: text,
+      image_url: '',
+      buttons: [b],
+    }));
+    const res = await zaloPost(
+      'https://openapi.zalo.me/v2.0/oa/message',
+      {
+        recipient: { user_id: String(userId) },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: { template_type: 'button', elements },
+          },
+        },
+      }
+    );
+    if (res.data?.error === 0) return;
+    console.error('[Zalo Button elements] error:', res.data?.error, res.data?.message);
+  } catch (err) {
+    console.error('[Zalo Button elements] exception:', err.message);
+  }
+
+  // Thử v2 format "list" template
   try {
     const res = await zaloPost(
       'https://openapi.zalo.me/v2.0/oa/message',
@@ -70,37 +96,23 @@ async function sendZaloButtons(userId, text, buttons) {
         message: {
           attachment: {
             type: 'template',
-            payload: { template_type: 'button', text, buttons: btnPayload },
+            payload: {
+              template_type: 'list',
+              elements: btnPayload.map(b => ({
+                title: b.title,
+                subtitle: '',
+                image_url: '',
+                buttons: [b],
+              })),
+            },
           },
         },
       }
     );
     if (res.data?.error === 0) return;
-    console.error('[Zalo Button v2] error:', res.data?.error, res.data?.message);
+    console.error('[Zalo Button list] error:', res.data?.error, res.data?.message);
   } catch (err) {
-    console.error('[Zalo Button v2] exception:', err.message);
-  }
-
-  // Thử format v3.0 quick_replies
-  try {
-    const res = await zaloPost(
-      'https://openapi.zalo.me/v3.0/oa/message/cs',
-      {
-        recipient: { user_id: String(userId) },
-        message: {
-          text,
-          quick_replies: buttons.map(b => ({
-            title: b.title,
-            payload: b.payload || b.title,
-            image_icon: '',
-          })),
-        },
-      }
-    );
-    if (res.data?.error === 0) return;
-    console.error('[Zalo Button v3] error:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo Button v3] exception:', err.message);
+    console.error('[Zalo Button list] exception:', err.message);
   }
 
   // Fallback: plain text
