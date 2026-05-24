@@ -1,6 +1,9 @@
 const router = require('express').Router()
+const jwt = require('jsonwebtoken')
 const AdminUser = require('../../src/models/AdminUser')
 const requireAuth = require('../middleware/requireAuth')
+
+const JWT_SECRET = process.env.JWT_SECRET || 'anhai-jwt-secret-2025'
 
 router.post('/login', async (req, res) => {
   const { username, password } = req.body
@@ -12,13 +15,16 @@ router.post('/login', async (req, res) => {
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' })
     }
-    req.session.adminUser = {
+    const payload = {
       id: user._id.toString(),
       username: user.username,
       fullName: user.fullName,
       role: user.role,
     }
-    return res.json({ user: req.session.adminUser })
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' })
+    // Giữ session cho EJS admin panel
+    req.session.adminUser = payload
+    return res.json({ user: payload, token })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -29,7 +35,7 @@ router.post('/logout', requireAuth, (req, res) => {
 })
 
 router.get('/me', requireAuth, (req, res) => {
-  res.json(req.session.adminUser)
+  res.json(req.user || req.session.adminUser)
 })
 
 module.exports = router

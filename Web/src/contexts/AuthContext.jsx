@@ -1,29 +1,57 @@
-import { createContext, useContext } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { api } from '../lib/api'
 
 const AuthContext = createContext(null)
 
+function loadStoredUser() {
+  try {
+    const saved = localStorage.getItem('auth_user')
+    return saved ? JSON.parse(saved) : null
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }) {
-  const queryClient = useQueryClient()
+  const [user, setUser] = useState(loadStoredUser)
+  const [isLoading, setIsLoading] = useState(!loadStoredUser())
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: () => api.get('/api/auth/me').then((r) => r.data),
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  })
+  useEffect(() => {
+    // Nếu đã có token trong localStorage, xác thực lại với server
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
+    api.get('/api/auth/me')
+      .then((r) => {
+        setUser(r.data)
+        localStorage.setItem('auth_user', JSON.stringify(r.data))
+      })
+      .catch(() => {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_user')
+        setUser(null)
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
 
-  const logoutMutation = useMutation({
-    mutationFn: () => api.post('/api/auth/logout'),
-    onSuccess: () => {
-      queryClient.clear()
-      window.location.href = '/login'
-    },
-  })
+  const setAuth = (userData, token) => {
+    setUser(userData)
+    localStorage.setItem('auth_user', JSON.stringify(userData))
+    if (token) localStorage.setItem('auth_token', token)
+  }
+
+  const logout = async () => {
+    try { await api.post('/api/auth/logout') } catch {}
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    setUser(null)
+    window.location.href = '/login'
+  }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout: logoutMutation.mutate }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, setAuth }}>
       {children}
     </AuthContext.Provider>
   )

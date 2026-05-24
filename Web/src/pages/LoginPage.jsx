@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { Building2, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const { setAuth } = useAuth()
   const [showPwd, setShowPwd] = useState(false)
   const [form, setForm] = useState({ username: '', password: '' })
 
   const loginMutation = useMutation({
     mutationFn: (data) => api.post('/api/auth/login', data).then((r) => r.data),
     onSuccess: (data) => {
-      queryClient.setQueryData(['auth', 'me'], data.user)
+      setAuth(data.user, data.token)
       navigate('/dashboard', { replace: true })
     },
     onError: (err) => {
