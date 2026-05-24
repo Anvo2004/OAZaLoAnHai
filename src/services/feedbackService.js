@@ -48,8 +48,8 @@ async function handleText(userId, text, displayName) {
   const state = getState(userId);
 
   // Lệnh huỷ toàn cục
-  const lower = text.toLowerCase().trim();
-  if (['huỷ', 'huy', 'cancel', 'thoát', 'thoat'].includes(lower)) {
+  const lower = text.toLowerCase().trim().normalize('NFC');
+  if (['huỷ', 'hủy', 'huy', 'cancel', 'thoát', 'thoat'].includes(lower)) {
     clearState(userId);
     await sendZaloText(userId, '❌ Đã huỷ. Bạn có thể bắt đầu lại bằng cách chọn "Góp ý, phản ánh" trong menu.');
     return;
@@ -124,12 +124,17 @@ async function handleText(userId, text, displayName) {
   }
 
   if (state.step === 'waiting_confirm') {
-    if (['xác nhận gửi', 'xac nhan gui', 'xác nhận', 'xac nhan', 'gửi', 'gui', 'ok', 'đồng ý', 'dong y'].some(k => lower.includes(k))) {
+    if (['xác nhận gửi', 'xac nhan gui', 'xác nhận', 'xac nhan', 'gửi', 'gui', 'ok', 'đồng ý', 'dong y'].some(k => lower.includes(k.normalize('NFC')))) {
       await saveFeedback(userId, state);
       return;
     }
-    if (['nhập lại', 'nhap lai', 'làm lại', 'lam lai', 'sửa', 'sua'].some(k => lower.includes(k))) {
+    if (['nhập lại', 'nhap lai', 'làm lại', 'lam lai', 'sửa', 'sua'].some(k => lower.includes(k.normalize('NFC')))) {
       await startFeedback(userId);
+      return;
+    }
+    if (['huỷ', 'hủy', 'huy', 'cancel'].some(k => lower.includes(k.normalize('NFC')))) {
+      clearState(userId);
+      await sendZaloText(userId, '❌ Đã huỷ. Bạn có thể bắt đầu lại bằng cách chọn "Góp ý, phản ánh" trong menu.');
       return;
     }
     await sendZaloText(userId,
