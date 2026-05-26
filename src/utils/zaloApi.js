@@ -55,56 +55,50 @@ async function uploadImageBufferToZalo(buffer, filename) {
 }
 
 async function sendZaloButtons(userId, text, buttons) {
-  // Thử v3.0 trước (hỗ trợ template tốt hơn)
-  try {
-    const res = await zaloPost('https://openapi.zalo.me/v3.0/oa/message/cs', {
-      recipient: { user_id: String(userId) },
-      message: {
-        attachment: {
-          type: 'template',
-          payload: {
-            template_type: 'list',
-            elements: buttons.slice(0, 3).map(b => ({
+  const templateBody = {
+    recipient: { user_id: String(userId) },
+    message: {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'list',
+          elements: buttons.slice(0, 3).map(b => ({
+            title: b.title,
+            buttons: [{
               title: b.title,
-              buttons: [{
-                title: b.title,
-                type: 'oa.query.show',
-                payload: b.title,
-              }],
-            })),
-          },
+              type: 'oa.query.show',
+              payload: b.title,
+            }],
+          })),
         },
       },
-    });
-    console.log('[Zalo] v3 template response:', JSON.stringify(res.data));
+    },
+  };
+
+  // Thử v4 (mới nhất)
+  try {
+    const res = await zaloPost('https://openapi.zalo.me/v4/oa/message/cs', templateBody);
+    console.log('[Zalo] v4 response:', JSON.stringify(res.data));
+    if (res.data?.error === 0) return;
+    console.warn('[Zalo] v4 lỗi:', res.data?.error, res.data?.message);
+  } catch (err) {
+    console.error('[Zalo] v4 thất bại:', err.message);
+  }
+
+  // Thử v3.0
+  try {
+    const res = await zaloPost('https://openapi.zalo.me/v3.0/oa/message/cs', templateBody);
+    console.log('[Zalo] v3 response:', JSON.stringify(res.data));
     if (res.data?.error === 0) return;
     console.warn('[Zalo] v3 lỗi:', res.data?.error, res.data?.message);
   } catch (err) {
     console.error('[Zalo] v3 thất bại:', err.message);
   }
 
-  // Thử v2.0 với 1 element chứa tất cả buttons
+  // Thử v2.0
   try {
-    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
-      recipient: { user_id: String(userId) },
-      message: {
-        attachment: {
-          type: 'template',
-          payload: {
-            template_type: 'list',
-            elements: [{
-              title: text,
-              buttons: buttons.slice(0, 3).map(b => ({
-                title: b.title,
-                type: 'oa.query.show',
-                payload: b.title,
-              })),
-            }],
-          },
-        },
-      },
-    });
-    console.log('[Zalo] v2 template response:', JSON.stringify(res.data));
+    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', templateBody);
+    console.log('[Zalo] v2 response:', JSON.stringify(res.data));
     if (res.data?.error === 0) return;
     console.warn('[Zalo] v2 lỗi:', res.data?.error, res.data?.message);
   } catch (err) {
