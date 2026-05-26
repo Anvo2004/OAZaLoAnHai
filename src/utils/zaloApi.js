@@ -55,58 +55,8 @@ async function uploadImageBufferToZalo(buffer, filename) {
 }
 
 async function sendZaloButtons(userId, text, buttons) {
-  const templateBody = {
-    recipient: { user_id: String(userId) },
-    message: {
-      attachment: {
-        type: 'template',
-        payload: {
-          template_type: 'list',
-          elements: buttons.slice(0, 3).map(b => ({
-            title: b.title,
-            buttons: [{
-              title: b.title,
-              type: 'oa.query.show',
-              payload: b.title,
-            }],
-          })),
-        },
-      },
-    },
-  };
-
-  // Thử v4 (mới nhất)
-  try {
-    const res = await zaloPost('https://openapi.zalo.me/v4/oa/message/cs', templateBody);
-    console.log('[Zalo] v4 response:', JSON.stringify(res.data));
-    if (res.data?.error === 0) return;
-    console.warn('[Zalo] v4 lỗi:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo] v4 thất bại:', err.message);
-  }
-
-  // Thử v3.0
-  try {
-    const res = await zaloPost('https://openapi.zalo.me/v3.0/oa/message/cs', templateBody);
-    console.log('[Zalo] v3 response:', JSON.stringify(res.data));
-    if (res.data?.error === 0) return;
-    console.warn('[Zalo] v3 lỗi:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo] v3 thất bại:', err.message);
-  }
-
-  // Thử v2.0
-  try {
-    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', templateBody);
-    console.log('[Zalo] v2 response:', JSON.stringify(res.data));
-    if (res.data?.error === 0) return;
-    console.warn('[Zalo] v2 lỗi:', res.data?.error, res.data?.message);
-  } catch (err) {
-    console.error('[Zalo] v2 thất bại:', err.message);
-  }
-
-  // Fallback plain text
-  const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
+  const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
+  const btnLabels = buttons.map((b, i) => `${numbers[i]} ${b.title}`).join('\n');
   await sendZaloText(userId, `${text}\n\n${btnLabels}`);
 }
 

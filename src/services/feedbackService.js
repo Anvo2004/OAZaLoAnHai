@@ -87,16 +87,15 @@ async function handleText(userId, text, displayName) {
     await sendZaloText(userId,
       '📎 Bạn có muốn gửi hình ảnh minh hoạ không?\n\n' +
       '• Gửi URL ảnh (http/https)\n' +
-      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
-      '• Hoặc bấm nút bên dưới nếu không có ảnh'
+      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n\n' +
+      '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
     );
-    await sendZaloButtons(userId, 'Bạn có thể bấm nhanh:', [{ title: 'Không có hình ảnh' }]);
     return;
   }
 
   if (state.step === 'waiting_image') {
-    const noImageKeywords = ['không có', 'khong co', 'không', 'khong', 'no', 'bỏ qua', 'bo qua'];
-    if (noImageKeywords.some(k => lower.includes(k))) {
+    const noImageKeywords = ['1', 'không có', 'khong co', 'không', 'khong', 'no', 'bỏ qua', 'bo qua'];
+    if (noImageKeywords.some(k => lower.trim() === k || lower.includes(k))) {
       setState(userId, { ...state, step: 'waiting_confirm', imageUrl: '' });
       await sendConfirmation(userId, { ...state, imageUrl: '' });
       return;
@@ -116,29 +115,28 @@ async function handleText(userId, text, displayName) {
     await sendZaloText(userId,
       '⚠️ Bạn đang ở bước gửi hình ảnh.\n\n' +
       '• Gửi URL ảnh (http/https)\n' +
-      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n' +
-      '• Hoặc bấm nút bên dưới để bỏ qua'
+      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n\n' +
+      '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
     );
-    await sendZaloButtons(userId, 'Bạn có thể bấm nhanh:', [{ title: 'Không có hình ảnh' }]);
     return;
   }
 
   if (state.step === 'waiting_confirm') {
-    if (['xác nhận gửi', 'xac nhan gui', 'xác nhận', 'xac nhan', 'gửi', 'gui', 'ok', 'đồng ý', 'dong y'].some(k => lower.includes(k.normalize('NFC')))) {
+    if (lower.trim() === '1' || ['xác nhận gửi', 'xac nhan gui', 'xác nhận', 'xac nhan', 'gửi', 'gui', 'ok', 'đồng ý', 'dong y'].some(k => lower.includes(k.normalize('NFC')))) {
       await saveFeedback(userId, state);
       return;
     }
-    if (['nhập lại', 'nhap lai', 'làm lại', 'lam lai', 'sửa', 'sua'].some(k => lower.includes(k.normalize('NFC')))) {
+    if (lower.trim() === '2' || ['nhập lại', 'nhap lai', 'làm lại', 'lam lai', 'sửa', 'sua'].some(k => lower.includes(k.normalize('NFC')))) {
       await startFeedback(userId);
       return;
     }
-    if (['huỷ', 'hủy', 'huy', 'cancel'].some(k => lower.includes(k.normalize('NFC')))) {
+    if (lower.trim() === '3' || ['huỷ', 'hủy', 'huy', 'cancel'].some(k => lower.includes(k.normalize('NFC')))) {
       clearState(userId);
       await sendZaloText(userId, '❌ Đã huỷ. Bạn có thể bắt đầu lại bằng cách chọn "Góp ý, phản ánh" trong menu.');
       return;
     }
     await sendZaloText(userId,
-      'Vui lòng chọn:\n• **Xác nhận gửi** — để gửi góp ý\n• **Nhập lại** — để nhập lại từ đầu\n• **Huỷ** — để thoát'
+      '⚠️ Vui lòng trả lời bằng số:\n1️⃣ Xác nhận gửi\n2️⃣ Nhập lại\n3️⃣ Huỷ'
     );
     return;
   }
@@ -179,13 +177,12 @@ async function sendConfirmation(userId, state) {
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
     `• Nội dung: ${state.content}\n` +
-    `• Hình ảnh: ${imageStatus}`
+    `• Hình ảnh: ${imageStatus}\n\n` +
+    'Trả lời bằng số:\n' +
+    '1️⃣ Xác nhận gửi\n' +
+    '2️⃣ Nhập lại\n' +
+    '3️⃣ Huỷ'
   );
-  await sendZaloButtons(userId, 'Vui lòng chọn:', [
-    { title: 'Xác nhận gửi' },
-    { title: 'Nhập lại' },
-    { title: 'Huỷ' },
-  ]);
 }
 
 async function saveFeedback(userId, state) {
