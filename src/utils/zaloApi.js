@@ -56,33 +56,36 @@ async function uploadImageBufferToZalo(buffer, filename) {
 
 async function sendZaloButtons(userId, text, buttons) {
   try {
-    const res = await zaloPost(
-      'https://openapi.zalo.me/v2.0/oa/message',
-      {
-        recipient: { user_id: String(userId) },
-        message: {
-          attachment: {
-            type: 'template',
-            payload: {
-              template_type: 'list',
-              elements: [
-                {
-                  title: text,
-                  buttons: buttons.slice(0, 3).map(b => ({
-                    title: b.title,
-                    type: 'oa.query.show',
-                    payload: b.title,
-                  })),
-                },
-              ],
-            },
+    const elements = buttons.slice(0, 3).map(b => ({
+      title: b.title,
+      subtitle: text,
+      buttons: [
+        {
+          title: b.title,
+          type: 'oa.query.show',
+          payload: b.title,
+        },
+      ],
+    }));
+
+    const body = {
+      recipient: { user_id: String(userId) },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'list',
+            elements,
           },
         },
-      }
-    );
+      },
+    };
+
+    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', body);
+    console.log('[Zalo] Template button response:', JSON.stringify(res.data));
 
     if (res.data?.error !== 0) {
-      console.warn('[Zalo] Template button lỗi, fallback plain text:', res.data?.message);
+      console.warn('[Zalo] Template button lỗi, fallback plain text. Error:', res.data?.error, res.data?.message);
       const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
       await sendZaloText(userId, `${text}\n\n${btnLabels}`);
     }
