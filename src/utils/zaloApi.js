@@ -54,10 +54,43 @@ async function uploadImageBufferToZalo(buffer, filename) {
   return attachmentId;
 }
 
-// Zalo OA webhook API không hỗ trợ template button — dùng plain text với danh sách lựa chọn
 async function sendZaloButtons(userId, text, buttons) {
-  const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
-  await sendZaloText(userId, `${text}\n\n${btnLabels}`);
+  try {
+    const res = await zaloPost(
+      'https://openapi.zalo.me/v2.0/oa/message',
+      {
+        recipient: { user_id: String(userId) },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'list',
+              elements: [
+                {
+                  title: text,
+                  buttons: buttons.slice(0, 3).map(b => ({
+                    title: b.title,
+                    type: 'oa.query.show',
+                    payload: b.title,
+                  })),
+                },
+              ],
+            },
+          },
+        },
+      }
+    );
+
+    if (res.data?.error !== 0) {
+      console.warn('[Zalo] Template button lỗi, fallback plain text:', res.data?.message);
+      const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
+      await sendZaloText(userId, `${text}\n\n${btnLabels}`);
+    }
+  } catch (err) {
+    console.error('[Zalo] Gửi button thất bại:', err.message);
+    const btnLabels = buttons.map(b => `👉 ${b.title}`).join('\n');
+    await sendZaloText(userId, `${text}\n\n${btnLabels}`);
+  }
 }
 
 async function sendZaloGroupText(text) {
