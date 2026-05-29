@@ -60,21 +60,27 @@ async function sendZaloButtons(userId, text, buttons) {
   await sendZaloText(userId, `${text}\n\n${btnLabels}`);
 }
 
-async function sendZaloGroupText(text) {
-  const groupId = CONFIG.ZALO_GROUP_ID;
-  if (!groupId) {
-    console.warn('[Zalo] ZALO_GROUP_ID chưa được cấu hình, bỏ qua gửi nhóm.');
+// Gửi tin vào nhóm Zalo cụ thể (theo groupId)
+async function sendZaloToGroup(text, groupId) {
+  const targetId = groupId || CONFIG.ZALO_GROUP_ID;
+  if (!targetId) {
+    console.warn('[Zalo] Không có groupId, bỏ qua gửi nhóm.');
     return;
   }
   try {
     const res = await zaloPost(
       'https://openapi.zalo.me/v2.0/oa/message',
-      { recipient: { group_id: String(groupId) }, message: { text } }
+      { recipient: { group_id: String(targetId) }, message: { text } }
     );
     if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi tin nhóm:', res.data);
   } catch (err) {
     console.error('[Zalo] Gửi tin nhóm thất bại:', err.message);
   }
+}
+
+// Tương thích ngược — gửi vào nhóm mặc định
+async function sendZaloGroupText(text) {
+  return sendZaloToGroup(text, CONFIG.ZALO_GROUP_ID);
 }
 
 async function getZaloUserProfile(userId) {
@@ -92,4 +98,29 @@ async function getZaloUserProfile(userId) {
   }
 }
 
-module.exports = { sendZaloText, sendZaloButtons, sendZaloGroupText, getZaloUserProfile, uploadImageBufferToZalo };
+// Lấy danh sách thành viên nhóm Zalo
+async function getZaloGroupMembers(groupId) {
+  try {
+    const token = getToken();
+    const res = await axios.get(
+      `https://openapi.zalo.me/v2.0/oa/groupchat/getmember?data=${encodeURIComponent(JSON.stringify({ group_id: String(groupId) }))}`,
+      { headers: { access_token: token } }
+    );
+    if (res.data?.error === 0) return res.data.data?.members || [];
+    console.error('[Zalo] Lấy members nhóm thất bại:', res.data);
+    return [];
+  } catch (err) {
+    console.error('[Zalo] getGroupMembers thất bại:', err.message);
+    return [];
+  }
+}
+
+module.exports = {
+  sendZaloText,
+  sendZaloButtons,
+  sendZaloToGroup,
+  sendZaloGroupText,
+  getZaloUserProfile,
+  uploadImageBufferToZalo,
+  getZaloGroupMembers,
+};

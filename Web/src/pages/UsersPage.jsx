@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Loader2, ShieldCheck, User } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, ShieldCheck, Shield, User } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,23 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDateShort } from '@/lib/utils'
 import { toast } from 'sonner'
+
+const ROLE_CONFIG = {
+  superadmin:  { label: 'Lãnh đạo UB',    icon: ShieldCheck, className: 'text-amber-700 bg-amber-50' },
+  dept_leader: { label: 'Lãnh đạo phòng', icon: Shield,      className: 'text-purple-700 bg-purple-50' },
+  officer:     { label: 'Cán bộ',         icon: User,        className: 'text-blue-700 bg-blue-50' },
+  staff:       { label: 'Nhân viên',      icon: User,        className: 'text-slate-600 bg-slate-50' },
+}
+
+function RoleBadge({ role }) {
+  const cfg = ROLE_CONFIG[role] ?? ROLE_CONFIG.staff
+  const Icon = cfg.icon
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cfg.className}`}>
+      <Icon className="h-3 w-3" /> {cfg.label}
+    </span>
+  )
+}
 
 export default function UsersPage() {
   const { user: me } = useAuth()
@@ -55,7 +72,8 @@ export default function UsersPage() {
                 <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-8">#</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Tài khoản</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Họ tên</th>
-                <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-28">Vai trò</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Vai trò</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Loại phụ trách</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-24">Ngày tạo</th>
                 <th className="w-20"></th>
               </tr>
@@ -77,15 +95,13 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 font-medium">{u.fullName}</td>
                   <td className="px-4 py-3">
-                    {u.role === 'superadmin' ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                        <ShieldCheck className="h-3 w-3" /> Quản trị viên
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                        <User className="h-3 w-3" /> Nhân viên
-                      </span>
-                    )}
+                    <RoleBadge role={u.role} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500 hidden md:table-cell">
+                    {u.categoryIds?.length > 0
+                      ? u.categoryIds.map((c) => `${c.icon} ${c.name}`).join(', ')
+                      : <span className="text-slate-300">—</span>
+                    }
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {formatDateShort(u.createdAt)}

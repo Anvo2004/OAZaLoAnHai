@@ -49,13 +49,17 @@ app.use(session({
 // Flash messages
 app.use(flash());
 
-// Kết nối MongoDB + seed tài khoản admin mặc định
+// Kết nối MongoDB + seed dữ liệu mặc định
 mongoose.connect(CONFIG.MONGO_URI)
   .then(async () => {
     console.log('[MongoDB] Kết nối thành công');
+
     const AdminUser = require('./src/models/AdminUser');
-    const count = await AdminUser.countDocuments();
-    if (count === 0) {
+    const Category = require('./src/models/Category');
+
+    // Seed tài khoản admin mặc định
+    const adminCount = await AdminUser.countDocuments();
+    if (adminCount === 0) {
       await AdminUser.create({
         username: 'admin',
         password: 'admin@2025',
@@ -63,6 +67,19 @@ mongoose.connect(CONFIG.MONGO_URI)
         role: 'superadmin',
       });
       console.log('[Admin] Tài khoản mặc định: admin / admin@2025 — đổi mật khẩu sau khi đăng nhập!');
+    }
+
+    // Seed 4 danh mục phản ánh mặc định
+    const catCount = await Category.countDocuments();
+    if (catCount === 0) {
+      const defaultCategories = [
+        { name: 'Môi trường, Hạ tầng, Xây dựng',    zaloGroupId: '6f2ab62e124cfb12a25d', icon: '🏗️', order: 1 },
+        { name: 'Văn hoá, Giáo dục, Y tế',            zaloGroupId: '10d632c896aa7ff426bb', icon: '🏫', order: 2 },
+        { name: 'Dịch vụ công, Thủ tục hành chính',  zaloGroupId: '5f8db19515f7fca9a5e6', icon: '📋', order: 3 },
+        { name: 'An ninh trật tự, PCCC',              zaloGroupId: 'e8dd38c69ca475fa2cb5', icon: '🚔', order: 4 },
+      ];
+      await Category.insertMany(defaultCategories);
+      console.log('[Seed] Đã tạo 4 danh mục phản ánh mặc định');
     }
   })
   .catch(err => console.error('[MongoDB] Lỗi kết nối:', err.message));

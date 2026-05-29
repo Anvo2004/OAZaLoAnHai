@@ -9,23 +9,47 @@ import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 
+const ROLE_OPTIONS = [
+  { value: 'officer',     label: 'Cán bộ phụ trách' },
+  { value: 'dept_leader', label: 'Lãnh đạo phòng' },
+  { value: 'superadmin',  label: 'Lãnh đạo Ủy ban (Quản trị)' },
+]
+
 export default function UserFormPage() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showPwd, setShowPwd] = useState(false)
-  const [form, setForm] = useState({ username: '', fullName: '', password: '', role: 'staff' })
+  const [form, setForm] = useState({
+    username: '', fullName: '', password: '', role: 'officer',
+    zaloUserId: '', categoryIds: [],
+  })
 
   const { data, isLoading: loadingUser } = useQuery({
     queryKey: ['user', id],
     queryFn: () => api.get(`/api/users/${id}`).then((r) => r.data),
     enabled: isEdit,
-    onSuccess: (d) => {
-      const u = d.user
-      setForm({ username: u.username, fullName: u.fullName, password: '', role: u.role })
-    },
   })
+
+  const { data: catsData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/api/categories').then((r) => r.data),
+  })
+
+  useEffect(() => {
+    if (data?.user) {
+      const u = data.user
+      setForm({
+        username: u.username,
+        fullName: u.fullName,
+        password: '',
+        role: u.role,
+        zaloUserId: u.zaloUserId || '',
+        categoryIds: u.categoryIds?.map((c) => (typeof c === 'object' ? c._id : c)) || [],
+      })
+    }
+  }, [data])
 
   const mutation = useMutation({
     mutationFn: (payload) =>
@@ -46,7 +70,12 @@ export default function UserFormPage() {
     if (!isEdit && !form.username) { toast.error('Vui lòng nhập tên đăng nhập'); return }
     if (!isEdit && !form.password) { toast.error('Vui lòng nhập mật khẩu'); return }
 
-    const payload = { fullName: form.fullName, role: form.role }
+    const payload = {
+      fullName: form.fullName,
+      role: form.role,
+      zaloUserId: form.zaloUserId,
+      categoryIds: form.categoryIds,
+    }
     if (!isEdit) { payload.username = form.username; payload.password = form.password }
     else if (form.password) payload.password = form.password
     mutation.mutate(payload)
@@ -54,9 +83,20 @@ export default function UserFormPage() {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
+  const toggleCategory = (catId) => {
+    setForm((f) => ({
+      ...f,
+      categoryIds: f.categoryIds.includes(catId)
+        ? f.categoryIds.filter((c) => c !== catId)
+        : [...f.categoryIds, catId],
+    }))
+  }
+
   if (isEdit && loadingUser) {
     return <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   }
+
+  const categories = catsData?.categories ?? []
 
   return (
     <div className="space-y-4 animate-fade-in max-w-lg">
@@ -93,10 +133,37 @@ export default function UserFormPage() {
                 value={form.role}
                 onChange={set('role')}
               >
-                <option value="staff">Nhân viên</option>
-                <option value="superadmin">Quản trị viên</option>
+                {ROLE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
+
+            <div className="space-y-1.5">
+              <Label>Zalo User ID (trong nhóm)</Label>
+              <Input placeholder="vd: 123456789" value={form.zaloUserId} onChange={set('zaloUserId')} />
+              <p className="text-xs text-muted-foreground">Dùng để tag trong thông báo Zalo</p>
+            </div>
+
+            {/* Chọn loại phản ánh phụ trách */}
+            {categories.length > 0 && (
+              <div className="space-y-2">
+                <Label>Loại phản ánh phụ trách</Label>
+                <div className="space-y-2">
+                  {categories.map((cat) => (
+                    <label key={cat._id} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={form.categoryIds.includes(cat._id)}
+                        onChange={() => toggleCategory(cat._id)}
+                      />
+                      <span className="text-sm">{cat.icon} {cat.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label>Mật khẩu {!isEdit && <span className="text-destructive">*</span>}</Label>

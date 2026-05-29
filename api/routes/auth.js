@@ -20,9 +20,10 @@ router.post('/login', async (req, res) => {
       username: user.username,
       fullName: user.fullName,
       role: user.role,
+      categoryIds: user.categoryIds?.map(c => c.toString()) || [],
+      zaloUserId: user.zaloUserId || '',
     }
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' })
-    // Giữ session cho EJS admin panel
     req.session.adminUser = payload
     return res.json({ user: payload, token })
   } catch (err) {
@@ -34,8 +35,22 @@ router.post('/logout', requireAuth, (req, res) => {
   req.session.destroy(() => res.json({ ok: true }))
 })
 
-router.get('/me', requireAuth, (req, res) => {
-  res.json(req.user || req.session.adminUser)
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.session?.adminUser?.id
+    const user = await AdminUser.findById(userId, '-password').lean()
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' })
+    res.json({
+      id: user._id.toString(),
+      username: user.username,
+      fullName: user.fullName,
+      role: user.role,
+      categoryIds: user.categoryIds?.map(c => c.toString()) || [],
+      zaloUserId: user.zaloUserId || '',
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 module.exports = router

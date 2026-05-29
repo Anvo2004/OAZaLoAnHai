@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import StatusBadge from '@/components/feedback/StatusBadge'
 import { formatDateShort } from '@/lib/utils'
 
 const STATUS_OPTIONS = [
-  { value: '',           label: 'Tất cả trạng thái' },
-  { value: 'pending',    label: '⏳ Chờ xử lý' },
-  { value: 'processing', label: '⚙️ Đang xử lý' },
-  { value: 'done',       label: '✅ Đã xử lý' },
+  { value: '',         label: 'Tất cả trạng thái' },
+  { value: 'pending',  label: '⏳ Chờ xử lý' },
+  { value: 'draft',    label: '📄 Chờ duyệt' },
+  { value: 'resolved', label: '✅ Đã giải quyết' },
 ]
 
 function SelectField({ value, onChange, children }) {
@@ -26,7 +27,8 @@ function SelectField({ value, onChange, children }) {
 }
 
 export default function FeedbacksPage() {
-  const [filter, setFilter] = useState({ status: '', assignedTo: '', q: '' })
+  const { user } = useAuth()
+  const [filter, setFilter] = useState({ status: '', assignedTo: '', categoryId: '', q: '' })
   const [page, setPage] = useState(1)
 
   const { data, isLoading } = useQuery({
@@ -38,13 +40,20 @@ export default function FeedbacksPage() {
   const { data: adminsData } = useQuery({
     queryKey: ['admins'],
     queryFn: () => api.get('/api/users').then((r) => r.data),
+    enabled: user?.role === 'superadmin' || user?.role === 'dept_leader',
+  })
+
+  const { data: catsData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/api/categories').then((r) => r.data),
   })
 
   const setF = (key, value) => { setFilter((f) => ({ ...f, [key]: value })); setPage(1) }
 
   const feedbacks = data?.feedbacks ?? []
   const pagination = data?.pagination ?? { page: 1, totalPages: 1, total: 0 }
-  const hasFilter = filter.status || filter.assignedTo || filter.q
+  const hasFilter = filter.status || filter.assignedTo || filter.categoryId || filter.q
+  const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -71,13 +80,24 @@ export default function FeedbacksPage() {
             ))}
           </SelectField>
 
-          <SelectField value={filter.assignedTo} onChange={(v) => setF('assignedTo', v)}>
-            <option value="">Tất cả phân công</option>
-            <option value="none">Chưa phân công</option>
-            {adminsData?.users?.map((a) => (
-              <option key={a._id} value={a._id}>{a.fullName}</option>
+          {/* Lọc loại phản ánh */}
+          <SelectField value={filter.categoryId} onChange={(v) => setF('categoryId', v)}>
+            <option value="">Tất cả loại</option>
+            {catsData?.categories?.map((c) => (
+              <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
             ))}
           </SelectField>
+
+          {/* Lọc phân công — chỉ leader thấy */}
+          {isLeader && (
+            <SelectField value={filter.assignedTo} onChange={(v) => setF('assignedTo', v)}>
+              <option value="">Tất cả phân công</option>
+              <option value="none">Chưa phân công</option>
+              {adminsData?.users?.map((a) => (
+                <option key={a._id} value={a._id}>{a.fullName}</option>
+              ))}
+            </SelectField>
+          )}
 
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300 pointer-events-none" />
@@ -92,7 +112,7 @@ export default function FeedbacksPage() {
 
           {hasFilter && (
             <button
-              onClick={() => { setFilter({ status: '', assignedTo: '', q: '' }); setPage(1) }}
+              onClick={() => { setFilter({ status: '', assignedTo: '', categoryId: '', q: '' }); setPage(1) }}
               className="h-9 px-3 rounded-xl text-sm text-slate-500 hover:text-red-500 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-all font-medium"
             >
               Xóa lọc
@@ -123,7 +143,10 @@ export default function FeedbacksPage() {
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Người gửi</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Nội dung</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-28">Trạng thái</th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-32 hidden md:table-cell">Phân công</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 hidden lg:table-cell">Loại</th>
+                  {isLeader && (
+                    <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-32 hidden md:table-cell">Phân công</th>
+                  )}
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-24 hidden sm:table-cell">Ngày gửi</th>
                   <th className="w-16"></th>
                 </tr>
@@ -158,11 +181,21 @@ export default function FeedbacksPage() {
                     <td className="px-4 py-3.5">
                       <StatusBadge status={fb.status} />
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-400 hidden md:table-cell">
-                      {fb.assignedTo?.fullName ?? (
+                    <td className="px-4 py-3.5 text-xs text-slate-500 hidden lg:table-cell">
+                      {fb.categoryId ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span>{fb.categoryId.icon}</span>
+                          <span className="truncate max-w-[120px]">{fb.categoryId.name}</span>
+                        </span>
+                      ) : (
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
+                    {isLeader && (
+                      <td className="px-4 py-3.5 text-xs text-slate-400 hidden md:table-cell">
+                        {fb.assignedTo?.fullName ?? <span className="text-slate-300">—</span>}
+                      </td>
+                    )}
                     <td className="px-4 py-3.5 text-xs text-slate-400 hidden sm:table-cell">
                       {formatDateShort(fb.createdAt)}
                     </td>

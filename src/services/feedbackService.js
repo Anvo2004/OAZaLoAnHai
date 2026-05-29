@@ -1,6 +1,7 @@
-const { sendZaloText, sendZaloButtons, sendZaloGroupText, getZaloUserProfile } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloButtons, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const Feedback = require('../models/Feedback');
+const Category = require('../models/Category');
 
 // State machine lưu trạng thái từng user trong memory (10 phút timeout)
 const userStates = new Map();
@@ -38,8 +39,19 @@ async function startFeedback(userId) {
   setState(userId, { step: 'waiting_contact' });
   await sendZaloText(userId,
     '💬 Chào mừng bạn đến với tính năng Góp ý - Phản ánh của UBND phường An Hải!\n\n' +
-    '📞 Vui lòng nhập **SĐT (09xxxxxxxx)** hoặc **email** của bạn để chúng tôi có thể liên hệ lại:\n\n' +
+    '📞 Vui lòng nhập SĐT (09xxxxxxxx) hoặc email của bạn để chúng tôi có thể liên hệ lại:\n\n' +
     '(Nhắn "huỷ" để thoát bất cứ lúc nào)'
+  );
+}
+
+async function sendCategoryMenu(userId) {
+  await sendZaloText(userId,
+    '🏷️ Chọn loại phản ánh của bạn:\n\n' +
+    '1️⃣ Môi trường, Hạ tầng, Xây dựng\n' +
+    '2️⃣ Văn hoá, Giáo dục, Y tế\n' +
+    '3️⃣ Dịch vụ công, Thủ tục hành chính\n' +
+    '4️⃣ An ninh trật tự, PCCC\n\n' +
+    '(Gõ số 1-4 để chọn)'
   );
 }
 
@@ -47,8 +59,9 @@ async function startFeedback(userId) {
 async function handleText(userId, text, displayName) {
   const state = getState(userId);
 
-  // Lệnh huỷ toàn cục
   const lower = text.toLowerCase().trim().normalize('NFC');
+
+  // Lệnh huỷ toàn cục
   if (['huỷ', 'hủy', 'huy', 'cancel', 'thoát', 'thoat'].includes(lower)) {
     clearState(userId);
     await sendZaloText(userId, '❌ Đã huỷ. Bạn có thể bắt đầu lại bằng cách chọn "Góp ý, phản ánh" trong menu.');
@@ -69,10 +82,37 @@ async function handleText(userId, text, displayName) {
       );
       return;
     }
-    setState(userId, { step: 'waiting_content', contact: text.trim(), displayName: displayName || '' });
+    setState(userId, { step: 'waiting_category', contact: text.trim(), displayName: displayName || '' });
+    await sendCategoryMenu(userId);
+    return;
+  }
+
+  if (state.step === 'waiting_category') {
+    const num = lower.trim();
+    const validChoices = ['1', '2', '3', '4'];
+    if (!validChoices.includes(num)) {
+      await sendZaloText(userId, '⚠️ Vui lòng gõ số từ 1 đến 4 để chọn loại phản ánh.');
+      await sendCategoryMenu(userId);
+      return;
+    }
+    // Lấy category theo thứ tự từ DB
+    const categories = await Category.find({}).sort({ order: 1 }).lean();
+    const idx = parseInt(num) - 1;
+    if (!categories[idx]) {
+      await sendZaloText(userId, '⚠️ Danh mục chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
+      return;
+    }
+    const cat = categories[idx];
+    setState(userId, {
+      ...state,
+      step: 'waiting_content',
+      categoryId: cat._id.toString(),
+      categoryName: cat.name,
+      categoryGroupId: cat.zaloGroupId,
+    });
     await sendZaloText(userId,
-      '✅ Đã ghi nhận thông tin liên hệ.\n\n' +
-      '✏️ Nhập **nội dung góp ý / phản ánh** của bạn (tối thiểu 5 ký tự):\n\n' +
+      `✅ Loại phản ánh: ${cat.name}\n\n` +
+      '✏️ Nhập nội dung góp ý / phản ánh của bạn (tối thiểu 5 ký tự):\n\n' +
       '(Nhắn "huỷ" để thoát)'
     );
     return;
@@ -158,17 +198,14 @@ async function handleImage(userId, imageUrl) {
   }
 }
 
-// Xử lý khi user gửi contact card (event user_send_text có attachment contact)
+// Xử lý khi user gửi contact card
 async function handleContactCard(userId, phone, displayName) {
   const state = getState(userId);
   if (!state || state.step !== 'waiting_contact') return;
 
-  setState(userId, { step: 'waiting_content', contact: phone, displayName: displayName || '' });
-  await sendZaloText(userId,
-    `✅ Đã ghi nhận SĐT: ${phone}\n\n` +
-    '✏️ Nhập **nội dung góp ý / phản ánh** của bạn (tối thiểu 5 ký tự):\n\n' +
-    '(Nhắn "huỷ" để thoát)'
-  );
+  setState(userId, { step: 'waiting_category', contact: phone, displayName: displayName || '' });
+  await sendZaloText(userId, `✅ Đã ghi nhận SĐT: ${phone}\n`);
+  await sendCategoryMenu(userId);
 }
 
 async function sendConfirmation(userId, state) {
@@ -176,6 +213,7 @@ async function sendConfirmation(userId, state) {
   await sendZaloText(userId,
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
+    `• Loại: ${state.categoryName || 'Chưa chọn'}\n` +
     `• Nội dung: ${state.content}\n` +
     `• Hình ảnh: ${imageStatus}\n\n` +
     'Trả lời bằng số:\n' +
@@ -193,34 +231,50 @@ async function saveFeedback(userId, state) {
       displayName = profile?.display_name || '';
     }
 
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 3);
+
     const feedback = await Feedback.create({
       userId,
       displayName,
       contact: state.contact,
       content: state.content,
       imageUrl: state.imageUrl || '',
+      categoryId: state.categoryId || null,
+      deadline,
     });
     clearState(userId);
 
+    // Tạo mã phản ánh ngắn từ 5 ký tự cuối của ObjectId
+    const shortCode = feedback._id.toString().slice(-5).toUpperCase();
+
     await sendZaloText(userId,
-      '✅ Đã tiếp nhận góp ý, cảm ơn bạn! Chúng tôi sẽ phản hồi sớm nhất 💙\n\n' +
-      'Mọi ý kiến của bạn giúp UBND phường An Hải phục vụ người dân ngày càng tốt hơn.'
+      '✅ Đã tiếp nhận phản ánh!\n\n' +
+      `Mã phản ánh: #${shortCode}\n` +
+      'UBND phường An Hải sẽ xử lý\n' +
+      'trong 2-3 ngày làm việc kể từ\n' +
+      'ngày tiếp nhận. Cảm ơn bạn!'
     );
 
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
     const imageInfo = state.imageUrl ? `🖼️ Ảnh: ${state.imageUrl}` : '🖼️ Ảnh: Không có';
+    const catInfo = state.categoryName ? `🏷️ Loại: ${state.categoryName}\n` : '';
     const groupMsg =
-      `📩 GÓP Ý MỚI - ${now}\n` +
+      `📩 PHẢN ÁNH MỚI - ${now}\n` +
       `${'─'.repeat(30)}\n` +
       `${nameInfo}` +
       `📞 Liên hệ: ${state.contact}\n` +
+      `${catInfo}` +
       `📝 Nội dung:\n${state.content}\n` +
       `${imageInfo}\n` +
-      `🆔 ID: ${feedback._id}`;
+      `🆔 Mã: #${shortCode}`;
 
-    await sendZaloGroupText(groupMsg);
-    console.log(`[Feedback] Đã lưu góp ý từ userId=${userId} contact=${state.contact}`);
+    // Gửi vào nhóm Zalo đúng theo loại phản ánh
+    const targetGroupId = state.categoryGroupId;
+    await sendZaloToGroup(groupMsg, targetGroupId);
+
+    console.log(`[Feedback] Lưu góp ý userId=${userId} contact=${state.contact} category=${state.categoryName}`);
   } catch (err) {
     console.error('[Feedback] Lưu DB thất bại:', err.message);
     await sendZaloText(userId, '⚠️ Có lỗi xảy ra khi lưu góp ý. Vui lòng thử lại sau.');

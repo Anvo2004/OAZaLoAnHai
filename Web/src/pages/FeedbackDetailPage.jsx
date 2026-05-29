@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Send, UserCheck, Trash2, Loader2, CheckCircle2 } from 'lucide-react'
+import {
+  ArrowLeft, Send, UserCheck, Trash2, Loader2, CheckCircle2,
+  FileText, ThumbsUp, ThumbsDown, Clock,
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -18,21 +21,27 @@ export default function FeedbackDetailPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  const [replyText, setReplyText] = useState('')
-  const [status, setStatus] = useState('')
+  const [draftText, setDraftText] = useState('')
   const [note, setNote] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
+  const [rejectReason, setRejectReason] = useState('')
+
+  const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
+  const isOfficer = user?.role === 'officer' || user?.role === 'staff'
 
   const { data, isLoading } = useQuery({
     queryKey: ['feedback', id],
     queryFn: () => api.get(`/api/feedbacks/${id}`).then((r) => r.data),
-    onSuccess: (d) => {
-      setStatus(d.feedback.status)
-      setNote(d.feedback.note || '')
-      setAssignedTo(d.feedback.assignedTo?._id || '')
-      setReplyText(d.feedback.response || '')
-    },
   })
+
+  useEffect(() => {
+    if (data?.feedback) {
+      const fb = data.feedback
+      setNote(fb.note || '')
+      setAssignedTo(fb.assignedTo?._id || '')
+      setDraftText(fb.draftResponse || '')
+    }
+  }, [data])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['feedback', id] })
@@ -40,22 +49,34 @@ export default function FeedbackDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['stats'] })
   }
 
-  const updateMutation = useMutation({
-    mutationFn: () => api.put(`/api/feedbacks/${id}`, { status, note }).then((r) => r.data),
-    onSuccess: () => { toast.success('Đã cập nhật'); invalidate() },
-    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi cập nhật'),
-  })
-
-  const replyMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/reply`, { response: replyText }).then((r) => r.data),
-    onSuccess: () => { toast.success('Đã gửi phản hồi qua Zalo'); invalidate() },
-    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi gửi Zalo'),
+  const noteMutation = useMutation({
+    mutationFn: () => api.put(`/api/feedbacks/${id}`, { note }).then((r) => r.data),
+    onSuccess: () => { toast.success('Đã lưu ghi chú'); invalidate() },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi lưu'),
   })
 
   const assignMutation = useMutation({
     mutationFn: () => api.post(`/api/feedbacks/${id}/assign`, { assignedTo }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã cập nhật phân công'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi phân công'),
+  })
+
+  const draftMutation = useMutation({
+    mutationFn: () => api.post(`/api/feedbacks/${id}/draft`, { draftResponse: draftText }).then((r) => r.data),
+    onSuccess: () => { toast.success('Đã gửi dự thảo, chờ lãnh đạo duyệt'); invalidate() },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi gửi dự thảo'),
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`).then((r) => r.data),
+    onSuccess: () => { toast.success('Đã duyệt và gửi phản hồi cho dân qua Zalo'); invalidate() },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi duyệt'),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: () => api.post(`/api/feedbacks/${id}/reject`, { rejectedReason: rejectReason }).then((r) => r.data),
+    onSuccess: () => { toast.success('Đã từ chối, cán bộ cần soạn lại dự thảo'); setRejectReason(''); invalidate() },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi từ chối'),
   })
 
   const deleteMutation = useMutation({
@@ -77,6 +98,10 @@ export default function FeedbackDetailPage() {
 
   if (!fb) return <p className="text-destructive">Không tìm thấy góp ý</p>
 
+  const shortCode = fb._id.slice(-5).toUpperCase()
+  const isDraft = fb.status === 'draft'
+  const isResolved = fb.status === 'resolved'
+
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
@@ -87,10 +112,15 @@ export default function FeedbackDetailPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold">Chi tiết góp ý</h1>
+          <h1 className="text-xl font-bold">Chi tiết phản ánh <span className="text-blue-600 font-mono">#{shortCode}</span></h1>
           <p className="text-xs text-muted-foreground">{fb._id}</p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {fb.categoryId && (
+            <span className="text-sm text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+              {fb.categoryId.icon} {fb.categoryId.name}
+            </span>
+          )}
           <StatusBadge status={fb.status} />
         </div>
       </div>
@@ -117,13 +147,25 @@ export default function FeedbackDetailPage() {
                   <p>{formatDate(fb.createdAt)}</p>
                 </div>
                 <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Hạn xử lý</p>
+                  <p className={fb.deadline && new Date(fb.deadline) < new Date() && !isResolved ? 'text-red-600 font-semibold' : ''}>
+                    {fb.deadline ? formatDate(fb.deadline) : '—'}
+                  </p>
+                </div>
+                <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Phân công</p>
                   <p>{fb.assignedTo?.fullName ?? '—'}</p>
                 </div>
+                {fb.assignedBy && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Người phân công</p>
+                    <p>{fb.assignedBy?.fullName ?? '—'}</p>
+                  </div>
+                )}
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Nội dung góp ý</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Nội dung phản ánh</p>
                 <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.content}</div>
               </div>
 
@@ -131,14 +173,41 @@ export default function FeedbackDetailPage() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Hình ảnh đính kèm</p>
                   <a href={fb.imageUrl} target="_blank" rel="noreferrer">
-                    <img src={fb.imageUrl} alt="Ảnh góp ý" className="max-h-64 rounded-lg border object-cover cursor-zoom-in" />
+                    <img src={fb.imageUrl} alt="Ảnh phản ánh" className="max-h-64 rounded-lg border object-cover cursor-zoom-in" />
                   </a>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {fb.response && (
+          {/* Dự thảo đang chờ duyệt */}
+          {fb.draftResponse && (
+            <Card className={isDraft ? 'border-sky-300' : 'border-slate-200'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-sky-700">
+                  <FileText className="h-4 w-4" />
+                  Dự thảo phản hồi
+                  {isDraft && <span className="text-xs bg-sky-100 text-sky-600 px-2 py-0.5 rounded-full ml-auto">Chờ duyệt</span>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-sky-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.draftResponse}</div>
+                {fb.draftBy && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Soạn bởi {fb.draftBy?.fullName} · {fb.draftAt ? formatDate(fb.draftAt) : ''}
+                  </p>
+                )}
+                {fb.rejectedReason && (
+                  <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                    <span className="font-semibold">Lý do từ chối: </span>{fb.rejectedReason}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Phản hồi đã gửi dân */}
+          {isResolved && fb.finalResponse && (
             <Card className="border-green-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2 text-green-700">
@@ -146,16 +215,18 @@ export default function FeedbackDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-green-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.response}</div>
-                {fb.respondedAt && (
+                <div className="bg-green-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.finalResponse}</div>
+                {fb.sentAt && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    {formatDate(fb.respondedAt)} {fb.respondedBy?.fullName && `· ${fb.respondedBy.fullName}`}
+                    Gửi lúc {formatDate(fb.sentAt)}
+                    {fb.approvedBy && ` · Duyệt bởi ${fb.approvedBy?.fullName}`}
                   </p>
                 )}
               </CardContent>
             </Card>
           )}
 
+          {/* Ghi chú nội bộ */}
           {fb.note && (
             <Card className="border-yellow-200">
               <CardHeader className="pb-2">
@@ -170,103 +241,143 @@ export default function FeedbackDetailPage() {
 
         {/* Right — actions */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Cập nhật */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Cập nhật xử lý</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Trạng thái</Label>
+
+          {/* OFFICER: Soạn dự thảo */}
+          {isOfficer && !isResolved && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-sky-500" /> Soạn dự thảo trả lời
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Textarea
+                  rows={5}
+                  placeholder="Nhập nội dung dự thảo phản hồi cho người dân..."
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                />
+                <Button
+                  className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                  onClick={() => {
+                    if (!draftText.trim()) { toast.error('Vui lòng nhập nội dung dự thảo'); return }
+                    if (window.confirm('Gửi dự thảo để lãnh đạo duyệt?')) draftMutation.mutate()
+                  }}
+                  disabled={draftMutation.isPending}
+                >
+                  {draftMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Gửi dự thảo chờ duyệt
+                </Button>
+                {isDraft && (
+                  <p className="text-xs text-center text-sky-600 bg-sky-50 rounded-lg p-2">
+                    Dự thảo đã gửi, đang chờ lãnh đạo duyệt
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* LEADER: Duyệt / Từ chối */}
+          {isLeader && isDraft && (
+            <Card className="border-sky-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-sky-700">
+                  <Clock className="h-4 w-4" /> Duyệt dự thảo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-sky-50 rounded-lg p-3 text-sm whitespace-pre-wrap text-slate-700">
+                  {fb.draftResponse}
+                </div>
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    if (window.confirm('Duyệt và gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate()
+                  }}
+                  disabled={approveMutation.isPending}
+                >
+                  {approveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
+                  Duyệt & Gửi dân
+                </Button>
+                <div className="space-y-2">
+                  <Textarea
+                    rows={2}
+                    placeholder="Lý do từ chối (tuỳ chọn)..."
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      if (window.confirm('Từ chối dự thảo và trả lại cán bộ?')) rejectMutation.mutate()
+                    }}
+                    disabled={rejectMutation.isPending}
+                  >
+                    {rejectMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-2" />}
+                    Từ chối
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* LEADER: Phân công */}
+          {isLeader && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-sky-500" /> Phân công xử lý
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <select
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                  value={assignedTo}
+                  onChange={(e) => setAssignedTo(e.target.value)}
                 >
-                  <option value="pending">⏳ Chờ xử lý</option>
-                  <option value="processing">⚙️ Đang xử lý</option>
-                  <option value="done">✅ Đã xử lý</option>
+                  <option value="">— Chưa phân công —</option>
+                  {admins.map((a) => (
+                    <option key={a._id} value={a._id}>{a.fullName} (@{a.username})</option>
+                  ))}
                 </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Ghi chú nội bộ</Label>
-                <Textarea
-                  rows={3}
-                  placeholder="Ghi chú cho nội bộ (người gửi không thấy)..."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </div>
-              <Button className="w-full" onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
-                {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Lưu cập nhật
-              </Button>
-            </CardContent>
-          </Card>
+                <Button variant="secondary" className="w-full" onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>
+                  {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Cập nhật phân công
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Phân công */}
+          {/* Ghi chú nội bộ */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-sky-500" /> Phân công xử lý
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <select
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-              >
-                <option value="">— Chưa phân công —</option>
-                {admins.map((a) => (
-                  <option key={a._id} value={a._id}>{a.fullName} (@{a.username})</option>
-                ))}
-              </select>
-              <Button variant="secondary" className="w-full" onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>
-                {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Cập nhật phân công
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Gửi Zalo */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Send className="h-4 w-4 text-green-500" /> Phản hồi qua Zalo
-              </CardTitle>
+              <CardTitle className="text-base">📝 Ghi chú nội bộ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
-                rows={4}
-                placeholder="Nhập nội dung phản hồi gửi cho người dân qua Zalo..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
+                rows={3}
+                placeholder="Ghi chú cho nội bộ (người gửi không thấy)..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
               />
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => {
-                  if (!replyText.trim()) { toast.error('Vui lòng nhập nội dung phản hồi'); return }
-                  if (window.confirm('Xác nhận gửi phản hồi này qua Zalo?')) replyMutation.mutate()
-                }}
-                disabled={replyMutation.isPending}
-              >
-                {replyMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                Gửi qua Zalo
+              <Button variant="outline" className="w-full" onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending}>
+                {noteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Lưu ghi chú
               </Button>
             </CardContent>
           </Card>
 
-          {/* Xóa */}
+          {/* Xóa — chỉ superadmin */}
           {user?.role === 'superadmin' && (
             <Card className="border-red-100">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Xóa vĩnh viễn góp ý này</p>
+                  <p className="text-sm text-muted-foreground">Xóa vĩnh viễn phản ánh này</p>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => { if (window.confirm('Xác nhận xóa vĩnh viễn góp ý này?')) deleteMutation.mutate() }}
+                    onClick={() => { if (window.confirm('Xác nhận xóa vĩnh viễn phản ánh này?')) deleteMutation.mutate() }}
                     disabled={deleteMutation.isPending}
                   >
                     <Trash2 className="h-4 w-4 mr-1" /> Xóa

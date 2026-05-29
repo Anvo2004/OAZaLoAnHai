@@ -2,11 +2,16 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const adminUserSchema = new mongoose.Schema({
-  username:  { type: String, required: true, unique: true, trim: true, lowercase: true },
-  password:  { type: String, required: true },
-  fullName:  { type: String, required: true, trim: true },
-  role:      { type: String, enum: ['superadmin', 'staff'], default: 'staff' },
-  createdAt: { type: Date, default: Date.now },
+  username:    { type: String, required: true, unique: true, trim: true, lowercase: true },
+  password:    { type: String, required: true },
+  fullName:    { type: String, required: true, trim: true },
+  // superadmin = Lãnh đạo UB, dept_leader = Lãnh đạo phòng, officer = Cán bộ phụ trách
+  // staff giữ lại cho backward compat
+  role:        { type: String, enum: ['superadmin', 'dept_leader', 'officer', 'staff'], default: 'officer' },
+  zaloUserId:  { type: String, default: '' },
+  categoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
+  managedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
+  createdAt:   { type: Date, default: Date.now },
 });
 
 adminUserSchema.pre('save', async function (next) {

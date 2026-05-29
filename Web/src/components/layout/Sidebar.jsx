@@ -1,17 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, HelpCircle, Building2 } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, Building2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
-const mainNav = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Tổng quan' },
-  { to: '/feedbacks',  icon: MessageSquare,   label: 'Góp ý & Phản ánh' },
-]
-
-const bottomNav = [
-  { icon: Settings,   label: 'Cài đặt' },
-  { icon: HelpCircle, label: 'Trợ giúp' },
-]
+const ROLE_LABELS = {
+  superadmin:  'Lãnh đạo Ủy ban',
+  dept_leader: 'Lãnh đạo phòng',
+  officer:     'Cán bộ phụ trách',
+  staff:       'Nhân viên',
+}
 
 function NavItem({ to, icon: Icon, label }) {
   return (
@@ -70,39 +67,24 @@ export default function Sidebar() {
           Menu chính
         </p>
         <div className="space-y-0.5">
-          {mainNav.map((item) => (
-            <NavItem key={item.to} {...item} />
-          ))}
+          <NavItem to="/dashboard" icon={LayoutDashboard} label="Tổng quan" />
+          <NavItem to="/feedbacks"  icon={MessageSquare}   label="Góp ý & Phản ánh" />
         </div>
 
+        {/* Quản trị — chỉ superadmin */}
         {user?.role === 'superadmin' && (
           <>
             <p className="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-widest text-white/25 select-none">
               Quản trị
             </p>
             <div className="space-y-0.5">
-              <NavItem to="/users" icon={Users} label="Tài khoản Admin" />
+              <NavItem to="/users"    icon={Users}    label="Tài khoản Admin" />
+              <NavItem to="/settings" icon={Settings} label="Cài đặt nhóm Zalo" />
             </div>
           </>
         )}
 
-        {/* Divider */}
         <div className="my-4 mx-2 border-t border-white/8" />
-
-        {/* Bottom nav items (non-linked) */}
-        <div className="space-y-0.5">
-          {bottomNav.map(({ icon: Icon, label }) => (
-            <button
-              key={label}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/8 hover:text-white transition-all duration-200 group"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 group-hover:bg-white/10 transition-all">
-                <Icon className="h-4 w-4 shrink-0" />
-              </span>
-              {label}
-            </button>
-          ))}
-        </div>
       </nav>
 
       {/* User footer */}
@@ -114,7 +96,7 @@ export default function Sidebar() {
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-semibold truncate">{user?.fullName}</p>
             <p className="text-white/40 text-[11px] mt-0.5">
-              {user?.role === 'superadmin' ? 'Quản trị viên' : 'Nhân viên'}
+              {ROLE_LABELS[user?.role] ?? user?.role}
             </p>
           </div>
           <button
