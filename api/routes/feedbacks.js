@@ -174,7 +174,7 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
   }
 })
 
-// POST /:id/approve — lãnh đạo duyệt dự thảo, gửi trả dân
+// POST /:id/approve — lãnh đạo duyệt dự thảo (có thể sửa nội dung), gửi trả dân
 router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req, res) => {
   try {
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
@@ -182,11 +182,12 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
     if (feedback.status !== 'draft') {
       return res.status(400).json({ error: 'Chỉ duyệt được phản ánh ở trạng thái Dự thảo' })
     }
-    if (!feedback.draftResponse?.trim()) {
-      return res.status(400).json({ error: 'Chưa có nội dung dự thảo' })
+    if (!feedback.draftResponse?.trim() && !req.body.finalResponse?.trim()) {
+      return res.status(400).json({ error: 'Chưa có nội dung phản hồi' })
     }
 
-    const finalResponse = feedback.draftResponse.trim()
+    // Lãnh đạo có thể sửa nội dung trước khi gửi; nếu không sửa thì dùng bản dự thảo gốc
+    const finalResponse = req.body.finalResponse?.trim() || feedback.draftResponse.trim()
 
     // Gửi tin cho dân qua Zalo OA
     await sendZaloText(feedback.userId, finalResponse)

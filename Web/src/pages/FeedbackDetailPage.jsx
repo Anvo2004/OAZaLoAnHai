@@ -68,7 +68,7 @@ export default function FeedbackDetailPage() {
   })
 
   const approveMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`).then((r) => r.data),
+    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`, { finalResponse: draftText }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã duyệt và gửi phản hồi cho dân qua Zalo'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi duyệt'),
   })
@@ -277,7 +277,7 @@ export default function FeedbackDetailPage() {
             </Card>
           )}
 
-          {/* LEADER: Duyệt / Từ chối */}
+          {/* LEADER: Duyệt / Từ chối — có thể sửa nội dung trước khi gửi */}
           {isLeader && isDraft && (
             <Card className="border-sky-200">
               <CardHeader className="pb-3">
@@ -286,12 +286,22 @@ export default function FeedbackDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="bg-sky-50 rounded-lg p-3 text-sm whitespace-pre-wrap text-slate-700">
-                  {fb.draftResponse}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5">Nội dung phản hồi gửi dân — có thể chỉnh sửa trước khi duyệt:</p>
+                  <Textarea
+                    rows={5}
+                    className="border-sky-200 focus:ring-sky-300"
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                  />
+                  {draftText !== fb.draftResponse && (
+                    <p className="text-[11px] text-amber-600 mt-1">✏️ Đã chỉnh sửa so với bản gốc của cán bộ</p>
+                  )}
                 </div>
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {
+                    if (!draftText.trim()) { toast.error('Nội dung phản hồi không được để trống'); return }
                     if (window.confirm('Duyệt và gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate()
                   }}
                   disabled={approveMutation.isPending}
@@ -299,7 +309,8 @@ export default function FeedbackDetailPage() {
                   {approveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
                   Duyệt & Gửi dân
                 </Button>
-                <div className="space-y-2">
+                <div className="border-t pt-3 space-y-2">
+                  <p className="text-xs text-slate-500">Hoặc từ chối và yêu cầu cán bộ soạn lại:</p>
                   <Textarea
                     rows={2}
                     placeholder="Lý do từ chối (tuỳ chọn)..."
@@ -315,7 +326,7 @@ export default function FeedbackDetailPage() {
                     disabled={rejectMutation.isPending}
                   >
                     {rejectMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-2" />}
-                    Từ chối
+                    Từ chối — Trả về cán bộ
                   </Button>
                 </div>
               </CardContent>
