@@ -98,20 +98,34 @@ async function getZaloUserProfile(userId) {
   }
 }
 
-// Lấy danh sách thành viên nhóm Zalo
+// Lấy danh sách thành viên nhóm Zalo — trả về { members, raw } để debug
 async function getZaloGroupMembers(groupId) {
   try {
     const token = getToken();
+    const params = JSON.stringify({ group_id: String(groupId), offset: 0, count: 50 });
     const res = await axios.get(
-      `https://openapi.zalo.me/v2.0/oa/groupchat/getmember?data=${encodeURIComponent(JSON.stringify({ group_id: String(groupId) }))}`,
+      `https://openapi.zalo.me/v2.0/oa/groupchat/getmember?data=${encodeURIComponent(params)}`,
       { headers: { access_token: token } }
     );
-    if (res.data?.error === 0) return res.data.data?.members || [];
-    console.error('[Zalo] Lấy members nhóm thất bại:', res.data);
-    return [];
+
+    console.log('[Zalo] getGroupMembers raw response:', JSON.stringify(res.data));
+
+    if (res.data?.error !== 0) {
+      console.error('[Zalo] getGroupMembers lỗi API:', res.data?.error, res.data?.message);
+      return { members: [], raw: res.data };
+    }
+
+    const d = res.data.data;
+    // Zalo có thể trả về members tại data.members hoặc trực tiếp data là array
+    const members = Array.isArray(d) ? d
+      : Array.isArray(d?.members) ? d.members
+      : [];
+
+    console.log(`[Zalo] getGroupMembers groupId=${groupId} => ${members.length} thành viên`);
+    return { members, raw: res.data };
   } catch (err) {
     console.error('[Zalo] getGroupMembers thất bại:', err.message);
-    return [];
+    return { members: [], raw: { error: -1, message: err.message } };
   }
 }
 

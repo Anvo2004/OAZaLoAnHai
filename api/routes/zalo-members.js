@@ -4,7 +4,7 @@ const ZaloGroupMember = require('../../src/models/ZaloGroupMember')
 const requireRole = require('../middleware/requireRole')
 const { getZaloGroupMembers } = require('../../src/utils/zaloApi')
 
-// GET / — danh sách members đã cache theo categoryId
+// GET /:categoryId — danh sách members đã cache
 router.get('/:categoryId', async (req, res) => {
   try {
     const members = await ZaloGroupMember.find({ categoryId: req.params.categoryId })
@@ -22,19 +22,29 @@ router.post('/sync/:categoryId', requireRole('superadmin'), async (req, res) => 
     const cat = await Category.findById(req.params.categoryId).lean()
     if (!cat) return res.status(404).json({ error: 'Không tìm thấy danh mục' })
 
-    const members = await getZaloGroupMembers(cat.zaloGroupId)
+    const { members, raw } = await getZaloGroupMembers(cat.zaloGroupId)
+
     if (!members.length) {
-      return res.json({ ok: true, synced: 0, message: 'Nhóm không có thành viên hoặc API trả về rỗng' })
+      return res.json({
+        ok: false,
+        synced: 0,
+        debug: raw,
+        message: raw?.error !== 0
+          ? `Zalo API lỗi ${raw?.error}: ${raw?.message}`
+          : 'API trả về 0 thành viên — OA có thể chưa được thêm vào nhóm hoặc chưa có quyền đọc members',
+      })
     }
 
     let synced = 0
     for (const m of members) {
+      const userId = m.user_id || m.id || m.userId
+      if (!userId) continue
       await ZaloGroupMember.findOneAndUpdate(
-        { zaloUserId: m.user_id, categoryId: cat._id },
+        { zaloUserId: String(userId), categoryId: cat._id },
         {
-          zaloUserId: m.user_id,
-          displayName: m.display_name || '',
-          avatar: m.avatar || '',
+          zaloUserId: String(userId),
+          displayName: m.display_name || m.name || '',
+          avatar: m.avatar || m.avatar_url || '',
           categoryId: cat._id,
           groupId: cat.zaloGroupId,
           syncedAt: new Date(),

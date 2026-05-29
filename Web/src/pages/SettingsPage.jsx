@@ -16,7 +16,11 @@ export default function SettingsPage() {
   const syncMutation = useMutation({
     mutationFn: (catId) => api.post(`/api/zalo-members/sync/${catId}`).then((r) => r.data),
     onSuccess: (data) => {
-      toast.success(`Đã sync ${data.synced} thành viên`)
+      if (data.synced > 0) {
+        toast.success(`Đã sync ${data.synced} thành viên`)
+      } else {
+        toast.error(data.message || 'Không lấy được thành viên')
+      }
       queryClient.invalidateQueries({ queryKey: ['zalo-members'] })
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi sync'),
