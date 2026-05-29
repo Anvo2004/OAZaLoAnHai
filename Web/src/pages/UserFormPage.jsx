@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Loader2, Eye, EyeOff, RefreshCw, Users } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,20 +26,48 @@ export default function UserFormPage() {
     zaloUserId: '', categoryIds: [],
   })
 
-  const { data, isLoading: loadingUser } = useQuery({
+  // Load user nếu đang edit
+  const { data: userData, isLoading: loadingUser } = useQuery({
     queryKey: ['user', id],
     queryFn: () => api.get(`/api/users/${id}`).then((r) => r.data),
     enabled: isEdit,
   })
 
+  // Load danh mục
   const { data: catsData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.get('/api/categories').then((r) => r.data),
   })
 
+  // Load members của từng loại đã chọn (song song)
+  const memberQueries = useQueries({
+    queries: form.categoryIds.map((catId) => ({
+      queryKey: ['zalo-members', catId],
+      queryFn: () => api.get(`/api/zalo-members/${catId}`).then((r) => r.data),
+      staleTime: 60_000,
+      enabled: form.categoryIds.length > 0,
+    })),
+  })
+
+  // Gộp members từ tất cả loại đã chọn, bỏ trùng theo zaloUserId
+  const allMembers = useMemo(() => {
+    const map = new Map()
+    memberQueries.forEach((q) => {
+      q.data?.members?.forEach((m) => {
+        if (!map.has(m.zaloUserId)) map.set(m.zaloUserId, m)
+      })
+    })
+    return Array.from(map.values()).sort((a, b) =>
+      (a.displayName || '').localeCompare(b.displayName || '', 'vi')
+    )
+  }, [memberQueries])
+
+  const isMembersLoading = memberQueries.some((q) => q.isLoading)
+  const hasMembersCache = allMembers.length > 0
+
   useEffect(() => {
-    if (data?.user) {
-      const u = data.user
+    if (userData?.user) {
+      const u = userData.user
       setForm({
         username: u.username,
         fullName: u.fullName,
@@ -49,7 +77,14 @@ export default function UserFormPage() {
         categoryIds: u.categoryIds?.map((c) => (typeof c === 'object' ? c._id : c)) || [],
       })
     }
-  }, [data])
+  }, [userData])
+
+  // Khi thay đổi loại chọn → reset zaloUserId nếu user hiện tại không còn trong danh sách
+  useEffect(() => {
+    if (!hasMembersCache) return
+    const stillValid = allMembers.some((m) => m.zaloUserId === form.zaloUserId)
+    if (!stillValid && form.zaloUserId) setForm((f) => ({ ...f, zaloUserId: '' }))
+  }, [allMembers, hasMembersCache])
 
   const mutation = useMutation({
     mutationFn: (payload) =>
@@ -92,6 +127,21 @@ export default function UserFormPage() {
     }))
   }
 
+  const syncCategory = async (catId) => {
+    try {
+      const res = await api.post(`/api/zalo-members/sync/${catId}`)
+      const data = res.data
+      if (data.synced > 0) {
+        toast.success(`Đã sync ${data.synced} thành viên`)
+        queryClient.invalidateQueries({ queryKey: ['zalo-members', catId] })
+      } else {
+        toast.error(data.message || 'Không lấy được thành viên — kiểm tra quyền OA')
+      }
+    } catch {
+      toast.error('Lỗi khi sync thành viên')
+    }
+  }
+
   if (isEdit && loadingUser) {
     return <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   }
@@ -104,7 +154,7 @@ export default function UserFormPage() {
         <Link to="/users">
           <Button variant="outline" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Quay lại</Button>
         </Link>
-        <h1 className="text-xl font-bold">{isEdit ? `Sửa @${data?.user?.username}` : 'Tạo tài khoản mới'}</h1>
+        <h1 className="text-xl font-bold">{isEdit ? `Sửa @${userData?.user?.username}` : 'Tạo tài khoản mới'}</h1>
       </div>
 
       <Card>
@@ -113,6 +163,8 @@ export default function UserFormPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Tên đăng nhập — chỉ khi tạo mới */}
             {!isEdit && (
               <div className="space-y-1.5">
                 <Label>Tên đăng nhập <span className="text-destructive">*</span></Label>
@@ -121,11 +173,13 @@ export default function UserFormPage() {
               </div>
             )}
 
+            {/* Họ tên */}
             <div className="space-y-1.5">
               <Label>Họ và tên <span className="text-destructive">*</span></Label>
               <Input placeholder="vd: Nguyễn Văn A" value={form.fullName} onChange={set('fullName')} />
             </div>
 
+            {/* Vai trò */}
             <div className="space-y-1.5">
               <Label>Vai trò</Label>
               <select
@@ -139,32 +193,86 @@ export default function UserFormPage() {
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Zalo User ID (trong nhóm)</Label>
-              <Input placeholder="vd: 123456789" value={form.zaloUserId} onChange={set('zaloUserId')} />
-              <p className="text-xs text-muted-foreground">Dùng để tag trong thông báo Zalo</p>
-            </div>
-
-            {/* Chọn loại phản ánh phụ trách */}
+            {/* Loại phản ánh phụ trách — chọn trước để load members */}
             {categories.length > 0 && (
               <div className="space-y-2">
                 <Label>Loại phản ánh phụ trách</Label>
-                <div className="space-y-2">
-                  {categories.map((cat) => (
-                    <label key={cat._id} className="flex items-center gap-2 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        className="rounded"
-                        checked={form.categoryIds.includes(cat._id)}
-                        onChange={() => toggleCategory(cat._id)}
-                      />
-                      <span className="text-sm">{cat.icon} {cat.name}</span>
-                    </label>
-                  ))}
+                <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                  {categories.map((cat) => {
+                    const isChecked = form.categoryIds.includes(cat._id)
+                    return (
+                      <div key={cat._id} className={`flex items-center justify-between px-3 py-2.5 transition-colors ${isChecked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                        <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            className="rounded accent-blue-600"
+                            checked={isChecked}
+                            onChange={() => toggleCategory(cat._id)}
+                          />
+                          <span className="text-sm font-medium">{cat.icon} {cat.name}</span>
+                        </label>
+                        {/* Nút sync nhanh nếu chưa có member cache */}
+                        {isChecked && (
+                          <button
+                            type="button"
+                            onClick={() => syncCategory(cat._id)}
+                            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors ml-2"
+                            title="Sync thành viên nhóm"
+                          >
+                            <RefreshCw className="h-3 w-3" /> Sync
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
 
+            {/* Zalo User ID — dropdown từ members khi đã chọn loại */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-blue-500" />
+                Tài khoản Zalo trong nhóm
+              </Label>
+
+              {form.categoryIds.length === 0 ? (
+                <p className="text-xs text-slate-400 italic py-2">Chọn loại phản ánh phụ trách trước để hiển thị danh sách thành viên Zalo</p>
+              ) : isMembersLoading ? (
+                <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-slate-50 text-sm text-slate-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải danh sách thành viên...
+                </div>
+              ) : hasMembersCache ? (
+                <>
+                  <select
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={form.zaloUserId}
+                    onChange={set('zaloUserId')}
+                  >
+                    <option value="">— Chọn thành viên Zalo —</option>
+                    {allMembers.map((m) => (
+                      <option key={m.zaloUserId} value={m.zaloUserId}>
+                        {m.displayName || m.zaloUserId} · ID: {m.zaloUserId}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-400">{allMembers.length} thành viên từ {form.categoryIds.length} nhóm đã chọn</p>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-700 mb-2">
+                    Chưa có dữ liệu thành viên cho nhóm này. Bấm <strong>Sync</strong> bên cạnh loại để tải về, hoặc nhập ID thủ công bên dưới.
+                  </div>
+                  <Input
+                    placeholder="Nhập Zalo User ID thủ công (vd: 123456789)"
+                    value={form.zaloUserId}
+                    onChange={set('zaloUserId')}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Mật khẩu */}
             <div className="space-y-1.5">
               <Label>Mật khẩu {!isEdit && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
