@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2, Eye, EyeOff, RefreshCw, Users } from 'lucide-react'
+import { ArrowLeft, Loader2, Eye, EyeOff, Users } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -127,20 +127,6 @@ export default function UserFormPage() {
     }))
   }
 
-  const syncCategory = async (catId) => {
-    try {
-      const res = await api.post(`/api/zalo-members/sync/${catId}`)
-      const data = res.data
-      if (data.synced > 0) {
-        toast.success(`Đã sync ${data.synced} thành viên`)
-        queryClient.invalidateQueries({ queryKey: ['zalo-members', catId] })
-      } else {
-        toast.error(data.message || 'Không lấy được thành viên — kiểm tra quyền OA')
-      }
-    } catch {
-      toast.error('Lỗi khi sync thành viên')
-    }
-  }
 
   if (isEdit && loadingUser) {
     return <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -211,17 +197,6 @@ export default function UserFormPage() {
                           />
                           <span className="text-sm font-medium">{cat.icon} {cat.name}</span>
                         </label>
-                        {/* Nút sync nhanh nếu chưa có member cache */}
-                        {isChecked && (
-                          <button
-                            type="button"
-                            onClick={() => syncCategory(cat._id)}
-                            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors ml-2"
-                            title="Sync thành viên nhóm"
-                          >
-                            <RefreshCw className="h-3 w-3" /> Sync
-                          </button>
-                        )}
                       </div>
                     )
                   })}
