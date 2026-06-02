@@ -169,14 +169,28 @@ export default function FeedbackDetailPage() {
                 <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.content}</div>
               </div>
 
-              {fb.imageUrl && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Hình ảnh đính kèm</p>
-                  <a href={fb.imageUrl} target="_blank" rel="noreferrer">
-                    <img src={fb.imageUrl} alt="Ảnh phản ánh" className="max-h-64 rounded-lg border object-cover cursor-zoom-in" />
-                  </a>
-                </div>
-              )}
+              {(() => {
+                const imgs = fb.imageUrls?.length > 0 ? fb.imageUrls : fb.imageUrl ? [fb.imageUrl] : []
+                return imgs.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Hình ảnh đính kèm ({imgs.length})
+                    </p>
+                    <div className={`grid gap-2 ${imgs.length === 1 ? 'grid-cols-1' : imgs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      {imgs.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border bg-slate-50 hover:opacity-90 transition-opacity">
+                          <img
+                            src={url}
+                            alt={`Ảnh ${i + 1}`}
+                            className="w-full object-cover cursor-zoom-in"
+                            style={{ maxHeight: imgs.length === 1 ? '256px' : '160px' }}
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              })()}
             </CardContent>
           </Card>
 

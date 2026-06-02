@@ -114,20 +114,35 @@ router.post('/:id/assign', requireRole('superadmin', 'dept_leader'), async (req,
       updatedAt: new Date(),
     })
 
-    // Thông báo vào nhóm Zalo
+    // Thông báo vào nhóm Zalo kèm @mention cán bộ
     if (assignedTo) {
       const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId').lean()
       const catName = feedback.categoryId?.name || ''
       const groupId = feedback.categoryId?.zaloGroupId
       const shortCode = feedback._id.toString().slice(-5).toUpperCase()
+      const mentionTag = `@${officer?.fullName || assignedTo}`
       const msg =
         `📋 PHÂN CÔNG XỬ LÝ PHẢN ÁNH\n` +
         `${'─'.repeat(28)}\n` +
-        `👤 Cán bộ: ${officer?.fullName || assignedTo}\n` +
+        `👤 Cán bộ: ${mentionTag}\n` +
         `🏷️ Loại: ${catName}\n` +
         `🆔 Mã: #${shortCode}\n` +
         `📝 Nội dung: ${feedback.content.slice(0, 80)}...`
-      await sendZaloToGroup(msg, groupId)
+
+      // Nếu cán bộ có zaloUserId thì gửi @mention thật trong nhóm Zalo
+      const mentions = []
+      if (officer?.zaloUserId) {
+        const pos = msg.indexOf(mentionTag)
+        if (pos !== -1) {
+          mentions.push({
+            user_id: officer.zaloUserId,
+            display_name: officer.fullName || '',
+            pos,
+            len: mentionTag.length,
+          })
+        }
+      }
+      await sendZaloToGroup(msg, groupId, mentions)
     }
 
     res.json({ ok: true })

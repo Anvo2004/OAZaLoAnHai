@@ -53,7 +53,8 @@ async function handleWebhook(body) {
   if (eventName === 'user_submit_info') {
     const action = (body.info?.action_payload || body.info?.action || body.info?.data || '').trim();
     if (isFeedbackTrigger(action) || action === '#goopy') {
-      await startFeedback(userId);
+      const displayName = body.sender?.display_name || '';
+      await startFeedback(userId, displayName);
     }
     return;
   }

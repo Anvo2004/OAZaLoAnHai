@@ -3,6 +3,8 @@ const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary')
 const Feedback = require('../models/Feedback');
 const Category = require('../models/Category');
 
+const MAX_IMAGES = 5;
+
 // State machine lưu trạng thái từng user trong memory (10 phút timeout)
 const userStates = new Map();
 
@@ -35,8 +37,8 @@ function isUrl(text) {
 }
 
 // Bắt đầu luồng góp ý
-async function startFeedback(userId) {
-  setState(userId, { step: 'waiting_contact' });
+async function startFeedback(userId, displayName = '') {
+  setState(userId, { step: 'waiting_contact', displayName });
   await sendZaloText(userId,
     '💬 Chào mừng bạn đến với tính năng Góp ý - Phản ánh của UBND phường An Hải!\n\n' +
     '📞 Vui lòng nhập SĐT (09xxxxxxxx) hoặc email của bạn để chúng tôi có thể liên hệ lại:\n\n' +
@@ -53,6 +55,24 @@ async function sendCategoryMenu(userId) {
     '4️⃣ An ninh trật tự, PCCC\n\n' +
     '(Gõ số 1-4 để chọn)'
   );
+}
+
+async function sendImagePrompt(userId, currentCount) {
+  if (currentCount === 0) {
+    await sendZaloText(userId,
+      `📎 Bạn có muốn gửi hình ảnh minh hoạ không? (Tối đa ${MAX_IMAGES} ảnh)\n\n` +
+      '• Gửi ảnh trực tiếp từ điện thoại\n' +
+      '• Hoặc gửi URL ảnh (http/https)\n\n' +
+      '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
+    );
+  } else {
+    await sendZaloText(userId,
+      `✅ Đã có ${currentCount}/${MAX_IMAGES} ảnh\n\n` +
+      `${currentCount < MAX_IMAGES ? '• Tiếp tục gửi thêm ảnh\n' : ''}` +
+      '• Nhắn "xong" để tiếp tục\n' +
+      '1️⃣ Gõ số 1 để kết thúc phần ảnh'
+    );
+  }
 }
 
 // Xử lý tin nhắn text từ user
@@ -82,7 +102,11 @@ async function handleText(userId, text, displayName) {
       );
       return;
     }
-    setState(userId, { step: 'waiting_category', contact: text.trim(), displayName: displayName || '' });
+    setState(userId, {
+      step: 'waiting_category',
+      contact: text.trim(),
+      displayName: displayName || state.displayName || '',
+    });
     await sendCategoryMenu(userId);
     return;
   }
@@ -95,7 +119,6 @@ async function handleText(userId, text, displayName) {
       await sendCategoryMenu(userId);
       return;
     }
-    // Lấy category theo thứ tự từ DB
     const categories = await Category.find({}).sort({ order: 1 }).lean();
     const idx = parseInt(num) - 1;
     if (!categories[idx]) {
@@ -123,41 +146,51 @@ async function handleText(userId, text, displayName) {
       await sendZaloText(userId, '⚠️ Nội dung quá ngắn. Vui lòng nhập ít nhất 5 ký tự.');
       return;
     }
-    setState(userId, { ...state, step: 'waiting_image', content: text.trim() });
-    await sendZaloText(userId,
-      '📎 Bạn có muốn gửi hình ảnh minh hoạ không?\n\n' +
-      '• Gửi URL ảnh (http/https)\n' +
-      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n\n' +
-      '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
-    );
+    const newState = { ...state, step: 'waiting_image', content: text.trim(), imageUrls: [] };
+    setState(userId, newState);
+    await sendImagePrompt(userId, 0);
     return;
   }
 
   if (state.step === 'waiting_image') {
-    const noImageKeywords = ['1', 'không có', 'khong co', 'không', 'khong', 'no', 'bỏ qua', 'bo qua'];
-    if (noImageKeywords.some(k => lower.trim() === k || lower.includes(k))) {
-      setState(userId, { ...state, step: 'waiting_confirm', imageUrl: '' });
-      await sendConfirmation(userId, { ...state, imageUrl: '' });
+    const currentImages = state.imageUrls || [];
+    const doneKeywords = ['1', 'xong', 'done', 'không có', 'khong co', 'không', 'khong', 'no', 'bỏ qua', 'bo qua'];
+    const isDone = doneKeywords.some((k) => lower.trim() === k);
+
+    if (isDone) {
+      setState(userId, { ...state, step: 'waiting_confirm' });
+      await sendConfirmation(userId, state);
       return;
     }
+
     if (isUrl(text)) {
+      if (currentImages.length >= MAX_IMAGES) {
+        setState(userId, { ...state, step: 'waiting_confirm' });
+        await sendZaloText(userId, `⚠️ Đã đạt tối đa ${MAX_IMAGES} ảnh.`);
+        await sendConfirmation(userId, state);
+        return;
+      }
       await sendZaloText(userId, '⏳ Đang tải ảnh lên...');
       try {
         const imageUrl = await uploadFromUrl(text.trim());
-        setState(userId, { ...state, step: 'waiting_confirm', imageUrl });
-        await sendConfirmation(userId, { ...state, imageUrl });
+        const newImages = [...currentImages, imageUrl];
+        const updatedState = { ...state, imageUrls: newImages };
+        setState(userId, updatedState);
+        if (newImages.length >= MAX_IMAGES) {
+          setState(userId, { ...updatedState, step: 'waiting_confirm' });
+          await sendZaloText(userId, `✅ Đã thêm ảnh ${newImages.length}/${MAX_IMAGES}. Đã đạt tối đa.`);
+          await sendConfirmation(userId, updatedState);
+        } else {
+          await sendImagePrompt(userId, newImages.length);
+        }
       } catch (err) {
         console.error('[Cloudinary] Upload URL thất bại:', err.message);
-        await sendZaloText(userId, '⚠️ Không thể tải ảnh từ URL đó. Hãy thử URL khác hoặc gõ "Không có hình ảnh".');
+        await sendZaloText(userId, '⚠️ Không thể tải ảnh từ URL đó. Hãy thử URL khác hoặc nhắn "xong" để bỏ qua.');
       }
       return;
     }
-    await sendZaloText(userId,
-      '⚠️ Bạn đang ở bước gửi hình ảnh.\n\n' +
-      '• Gửi URL ảnh (http/https)\n' +
-      '• Hoặc gửi ảnh trực tiếp từ điện thoại\n\n' +
-      '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
-    );
+
+    await sendImagePrompt(userId, currentImages.length);
     return;
   }
 
@@ -187,14 +220,32 @@ async function handleImage(userId, imageUrl) {
   const state = getState(userId);
   if (!state || state.step !== 'waiting_image') return;
 
+  const currentImages = state.imageUrls || [];
+
+  if (currentImages.length >= MAX_IMAGES) {
+    setState(userId, { ...state, step: 'waiting_confirm' });
+    await sendZaloText(userId, `⚠️ Đã đạt tối đa ${MAX_IMAGES} ảnh.`);
+    await sendConfirmation(userId, state);
+    return;
+  }
+
   await sendZaloText(userId, '⏳ Đang tải ảnh lên...');
   try {
     const cloudUrl = await uploadFromZaloImageUrl(imageUrl);
-    setState(userId, { ...state, step: 'waiting_confirm', imageUrl: cloudUrl });
-    await sendConfirmation(userId, { ...state, imageUrl: cloudUrl });
+    const newImages = [...currentImages, cloudUrl];
+    const updatedState = { ...state, imageUrls: newImages };
+    setState(userId, updatedState);
+
+    if (newImages.length >= MAX_IMAGES) {
+      setState(userId, { ...updatedState, step: 'waiting_confirm' });
+      await sendZaloText(userId, `✅ Đã thêm ảnh ${newImages.length}/${MAX_IMAGES}. Đã đạt tối đa.`);
+      await sendConfirmation(userId, updatedState);
+    } else {
+      await sendImagePrompt(userId, newImages.length);
+    }
   } catch (err) {
     console.error('[Cloudinary] Upload ảnh Zalo thất bại:', err.message);
-    await sendZaloText(userId, '⚠️ Không thể tải ảnh. Hãy thử lại hoặc gõ "Không có hình ảnh".');
+    await sendZaloText(userId, '⚠️ Không thể tải ảnh. Hãy thử lại hoặc nhắn "xong" để bỏ qua.');
   }
 }
 
@@ -209,7 +260,10 @@ async function handleContactCard(userId, phone, displayName) {
 }
 
 async function sendConfirmation(userId, state) {
-  const imageStatus = state.imageUrl ? '✅ Đã đính kèm ảnh' : '❌ Không có ảnh';
+  const imageUrls = state.imageUrls || [];
+  const imageStatus = imageUrls.length > 0
+    ? `✅ ${imageUrls.length} ảnh đính kèm`
+    : '❌ Không có ảnh';
   await sendZaloText(userId,
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
@@ -234,18 +288,19 @@ async function saveFeedback(userId, state) {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + 3);
 
+    const imageUrls = state.imageUrls || [];
     const feedback = await Feedback.create({
       userId,
       displayName,
       contact: state.contact,
       content: state.content,
-      imageUrl: state.imageUrl || '',
+      imageUrl: imageUrls[0] || '',
+      imageUrls,
       categoryId: state.categoryId || null,
       deadline,
     });
     clearState(userId);
 
-    // Tạo mã phản ánh ngắn từ 5 ký tự cuối của ObjectId
     const shortCode = feedback._id.toString().slice(-5).toUpperCase();
 
     await sendZaloText(userId,
@@ -258,8 +313,11 @@ async function saveFeedback(userId, state) {
 
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
-    const imageInfo = state.imageUrl ? `🖼️ Ảnh: ${state.imageUrl}` : '🖼️ Ảnh: Không có';
     const catInfo = state.categoryName ? `🏷️ Loại: ${state.categoryName}\n` : '';
+    const imageInfo = imageUrls.length > 0
+      ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
+      : '🖼️ Ảnh: Không có';
+
     const groupMsg =
       `📩 PHẢN ÁNH MỚI - ${now}\n` +
       `${'─'.repeat(30)}\n` +
@@ -270,11 +328,10 @@ async function saveFeedback(userId, state) {
       `${imageInfo}\n` +
       `🆔 Mã: #${shortCode}`;
 
-    // Gửi vào nhóm Zalo đúng theo loại phản ánh
     const targetGroupId = state.categoryGroupId;
     await sendZaloToGroup(groupMsg, targetGroupId);
 
-    console.log(`[Feedback] Lưu góp ý userId=${userId} contact=${state.contact} category=${state.categoryName}`);
+    console.log(`[Feedback] Lưu góp ý userId=${userId} contact=${state.contact} category=${state.categoryName} images=${imageUrls.length}`);
   } catch (err) {
     console.error('[Feedback] Lưu DB thất bại:', err.message);
     await sendZaloText(userId, '⚠️ Có lỗi xảy ra khi lưu góp ý. Vui lòng thử lại sau.');

@@ -61,16 +61,18 @@ async function sendZaloButtons(userId, text, buttons) {
 }
 
 // Gửi tin vào nhóm Zalo cụ thể (theo groupId)
-async function sendZaloToGroup(text, groupId) {
+// mentions: [{ user_id, display_name, pos, len }] — dùng khi muốn @mention thành viên
+async function sendZaloToGroup(text, groupId, mentions = []) {
   const targetId = groupId || CONFIG.ZALO_GROUP_ID;
   if (!targetId) {
     console.warn('[Zalo] Không có groupId, bỏ qua gửi nhóm.');
     return;
   }
   try {
+    const message = mentions.length > 0 ? { text, mentions } : { text };
     const res = await zaloPost(
       'https://openapi.zalo.me/v2.0/oa/message',
-      { recipient: { group_id: String(targetId) }, message: { text } }
+      { recipient: { group_id: String(targetId) }, message }
     );
     if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi tin nhóm:', res.data);
   } catch (err) {

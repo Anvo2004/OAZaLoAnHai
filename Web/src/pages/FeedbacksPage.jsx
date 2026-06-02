@@ -172,9 +172,9 @@ export default function FeedbacksPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="truncate max-w-[220px] text-slate-600">{fb.content}</p>
-                      {fb.imageUrl && (
+                      {(fb.imageUrls?.length > 0 || fb.imageUrl) && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                          📷 Có ảnh
+                          📷 {fb.imageUrls?.length > 1 ? `${fb.imageUrls.length} ảnh` : 'Có ảnh'}
                         </span>
                       )}
                     </td>
