@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn Góp ý – Phản ánh qua Zalo | UBND phường An Hải</title>
+<meta name="description" content="Hướng dẫn người dân gửi góp ý, phản ánh đến UBND phường An Hải qua Zalo OA — nhanh chóng, tiện lợi, nhận phản hồi trong 2–3 ngày làm việc.">
+<meta property="og:title" content="Góp ý – Phản ánh qua Zalo | UBND phường An Hải">
+<meta property="og:description" content="Hướng dẫn 7 bước gửi phản ánh đến UBND phường An Hải qua Zalo OA.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0068FF">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue:   #0068FF;
+    --blue2:  #004EC2;
+    --teal:   #00B4D8;
+    --bg:     #F0F4FF;
+    --white:  #FFFFFF;
+    --text:   #1A2340;
+    --muted:  #64748B;
+    --radius: 20px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── TOP NAV ── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid #E2E8F0;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .topbar-brand span { color: var(--blue); }
+  .topbar-actions { display: flex; gap: 8px; }
+  .btn-print {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid #CBD5E1;
+    color: var(--muted);
+  }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: #EFF6FF; }
+  .btn-primary {
+    background: var(--blue);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,104,255,.35);
+  }
+  .btn-primary:hover { background: var(--blue2); transform: translateY(-1px); }
+
+  /* ── PAGE ── */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 36px 20px 72px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, var(--blue2) 0%, var(--blue) 55%, var(--teal) 100%);
+    border-radius: 28px;
+    padding: 44px 44px 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -70px; right: -70px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.07);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -90px; left: 32%;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.05);
+  }
+  .header-logo {
+    width: 96px; height: 96px;
+    background: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 50px;
+    flex-shrink: 0;
+    box-shadow: 0 10px 40px rgba(0,0,0,.22);
+    position: relative; z-index: 1;
+  }
+  .header-text { position: relative; z-index: 1; flex: 1; }
+  .header-sub {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    opacity: .8;
+    margin-bottom: 8px;
+  }
+  .header-title {
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .header-desc {
+    font-size: 14px;
+    opacity: .88;
+    line-height: 1.6;
+    max-width: 460px;
+  }
+  .header-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .hbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 50px;
+    padding: 5px 13px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .sl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); }
+  .sl-text {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+  .sl-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, #CBD5E1, transparent);
+  }
+
+  /* ── STEPS ── */
+  .steps-flow {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 36px;
+  }
+
+  .step-row {
+    display: flex;
+    gap: 0;
+  }
+
+  .step-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 62px;
+    flex-shrink: 0;
+  }
+  .step-circle {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    color: white;
+    box-shadow: 0 4px 18px rgba(0,0,0,.15);
+    position: relative;
+    z-index: 1;
+  }
+  .step-line {
+    width: 3px;
+    flex: 1;
+    min-height: 20px;
+    background: #CBD5E1;
+    opacity: .4;
+    margin: 3px 0;
+  }
+
+  .step-body {
+    flex: 1;
+    padding: 0 0 28px 20px;
+    padding-top: 3px;
+  }
+
+  .step-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 22px 24px 20px;
+    box-shadow: 0 2px 14px rgba(0,68,200,.07);
+    border: 1.5px solid #E8EEFF;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .step-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0,68,200,.12);
+  }
+
+  .step-num { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
+  .step-title { font-size: 17px; font-weight: 800; margin-bottom: 9px; line-height: 1.3; }
+  .step-desc { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+  .step-desc strong { color: var(--text); }
+
+  /* chat bubbles */
+  .chat-wrap { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+  .bubble { display: inline-flex; align-items: flex-start; gap: 7px; max-width: 100%; }
+  .bubble-user { justify-content: flex-end; }
+  .bubble-bot  { justify-content: flex-start; }
+  .bav {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0; margin-top: 2px;
+  }
+  .bav-bot  { background: #E8F0FF; }
+  .bav-user { background: #DCFCE7; }
+  .bt {
+    padding: 9px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    max-width: calc(100% - 42px);
+  }
+  .bt-bot  { background: #F1F5FF; color: var(--text); border-radius: 4px 14px 14px 14px; }
+  .bt-user { background: var(--blue); color: white; border-radius: 14px 4px 14px 14px; }
+
+  /* tags */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag {
+    padding: 5px 13px; border-radius: 50px;
+    font-size: 12.5px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+
+  /* category grid */
+  .cat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 13px; }
+  .cat-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px;
+    font-size: 13px; font-weight: 600;
+  }
+  .cat-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white; flex-shrink: 0;
+  }
+
+  /* step colour schemes */
+  .s1 .step-circle { background: linear-gradient(135deg,#0068FF,#00B4D8); }
+  .s1 .step-num    { color: #0068FF; }
+  .s1 .step-card   { border-color: #BFDBFE; }
+
+  .s2 .step-circle { background: linear-gradient(135deg,#7C3AED,#A78BFA); }
+  .s2 .step-num    { color: #7C3AED; }
+  .s2 .step-card   { border-color: #DDD6FE; }
+
+  .s3 .step-circle { background: linear-gradient(135deg,#0891B2,#06B6D4); }
+  .s3 .step-num    { color: #0891B2; }
+  .s3 .step-card   { border-color: #A5F3FC; }
+
+  .s4 .step-circle { background: linear-gradient(135deg,#D97706,#F59E0B); }
+  .s4 .step-num    { color: #D97706; }
+  .s4 .step-card   { border-color: #FDE68A; }
+
+  .s5 .step-circle { background: linear-gradient(135deg,#059669,#10B981); }
+  .s5 .step-num    { color: #059669; }
+  .s5 .step-card   { border-color: #A7F3D0; }
+
+  .s6 .step-circle { background: linear-gradient(135deg,#DC2626,#F87171); }
+  .s6 .step-num    { color: #DC2626; }
+  .s6 .step-card   { border-color: #FECACA; }
+
+  .s7 .step-circle { background: linear-gradient(135deg,#0F766E,#14B8A6); }
+  .s7 .step-num    { color: #0F766E; }
+  .s7 .step-card   { border-color: #99F6E4; }
+
+  /* ── TIPS ── */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+  .tip-card {
+    background: white;
+    border-radius: 18px;
+    padding: 20px 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    border-top: 4px solid;
+  }
+  .tip-icon  { font-size: 30px; margin-bottom: 10px; }
+  .tip-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+  .tip-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .tip-desc strong { color: var(--text); }
+
+  /* ── FOOTER ── */
+  .footer-card {
+    background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%);
+    border-radius: 26px;
+    padding: 36px 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .footer-title { font-size: 20px; font-weight: 900; margin-bottom: 7px; }
+  .footer-sub   { font-size: 13.5px; opacity: .72; line-height: 1.65; }
+  .footer-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .fbadge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 50px;
+    padding: 7px 16px;
+    font-size: 12.5px; font-weight: 600;
+  }
+  .footer-qr {
+    width: 108px; height: 108px;
+    background: white;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 10px;
+    flex-shrink: 0;
+  }
+  .footer-qr span { font-size: 28px; }
+
+  /* ── SCROLL-TO-TOP ── */
+  .scroll-top {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,104,255,.4);
+    transition: all .2s;
+    opacity: 0;
+    pointer-events: none;
+    font-family: inherit;
+  }
+  .scroll-top.visible { opacity: 1; pointer-events: auto; }
+  .scroll-top:hover { transform: translateY(-3px); background: var(--blue2); }
+
+  /* ── PRINT ── */
+  @media print {
+    .topbar, .scroll-top { display: none !important; }
+    body { background: white; }
+    .page { padding: 0; max-width: 100%; }
+    .step-card { break-inside: avoid; }
+    .header, .footer-card {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .step-circle, .cat-num, .tip-card {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .header  { flex-direction: column; padding: 28px 24px; text-align: center; }
+    .header-badges { justify-content: center; }
+    .footer-card { flex-direction: column; text-align: center; }
+    .footer-qr { margin: 0 auto; }
+    .footer-badges { justify-content: center; }
+    .cat-grid { grid-template-columns: 1fr; }
+    .topbar-actions .btn-outline { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topbar">
+  <a class="topbar-brand" href="#">
+    🏛️ <span>UBND</span> phường An Hải
+  </a>
+  <div class="topbar-actions">
+    <button class="btn-print btn-outline" onclick="window.print()">🖨️ In PDF</button>
+    <a class="btn-print btn-primary" href="https://zalo.me/ubndphuonganhai" target="_blank" rel="noopener">
+      💬 Mở Zalo OA
+    </a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">🏛️</div>
+    <div class="header-text">
+      <div class="header-sub">UBND Phường An Hải · Đà Nẵng</div>
+      <div class="header-title">Hướng dẫn Gửi Góp ý<br>&amp; Phản ánh qua Zalo</div>
+      <div class="header-desc">
+        Gửi kiến nghị, phản ánh trực tiếp đến UBND phường chỉ với vài bước đơn giản —
+        nhanh chóng, tiện lợi, không cần đến trực tiếp.
+      </div>
+      <div class="header-badges">
+        <span class="hbadge">⚡ Phản hồi trong 2–3 ngày làm việc</span>
+        <span class="hbadge">📱 Miễn phí · Không cần cài thêm app</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEPS -->
+  <div class="section-label">
+    <div class="sl-dot"></div>
+    <div class="sl-text">Các bước thực hiện</div>
+    <div class="sl-line"></div>
+  </div>
+
+  <div class="steps-flow">
+
+    <!-- 1 -->
+    <div class="step-row s1">
+      <div class="step-connector">
+        <div class="step-circle">📲</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 1</div>
+          <div class="step-title">Tìm OA UBND phường An Hải trên Zalo</div>
+          <div class="step-desc">
+            Mở Zalo → tìm kiếm <strong>"UBND phường An Hải"</strong> → nhấn <strong>Quan tâm</strong>,
+            hoặc quét mã QR ở cuối trang này.
+          </div>
+          <div class="tag-row">
+            <span class="tag" style="background:#EEF2FF;color:#4338CA;">🔍 Tìm: "UBND phường An Hải"</span>
+            <span class="tag" style="background:#F0FDF4;color:#166534;">✅ Nhấn Quan tâm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="step-row s2">
+      <div class="step-connector">
+        <div class="step-circle">💬</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 2</div>
+          <div class="step-title">Kích hoạt tính năng Góp ý – Phản ánh</div>
+          <div class="step-desc">Chọn <strong>một trong hai cách</strong> để bắt đầu:</div>
+          <div class="tag-row">
+            <span class="tag" style="background:#F3E8FF;color:#7E22CE;">📋 Chọn menu "Góp ý, phản ánh"</span>
+            <span class="tag" style="background:#FFF7ED;color:#C2410C;">✍️ Nhắn: <strong>góp ý</strong> hoặc <strong>phản ánh</strong></span>
+          </div>
+          <div class="chat-wrap">
+            <div class="bubble bubble-user">
+              <div class="bt bt-user">góp ý</div>
+              <div class="bav bav-user">👤</div>
+            </div>
+            <div class="bubble bubble-bot">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">💬 Chào mừng bạn đến với tính năng Góp ý – Phản ánh!<br>📞 Vui lòng nhập SĐT hoặc email để chúng tôi liên hệ lại...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="step-row s3">
+      <div class="step-connector">
+        <div class="step-circle">📞</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 3</div>
+          <div class="step-title">Nhập thông tin liên hệ</div>
+          <div class="step-desc">
+            Nhập <strong>số điện thoại</strong> (10 chữ số, bắt đầu bằng 0)
+            hoặc <strong>địa chỉ email</strong> để UBND phường có thể phản hồi lại cho bạn.
+          </div>
+          <div class="chat-wrap">
+            <div class="bubble bubble-user">
+              <div class="bt bt-user">0912 345 678</div>
+              <div class="bav bav-user">👤</div>
+            </div>
+            <div class="bubble bubble-bot">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">✅ Đã ghi nhận SĐT: 0912345678<br>🏷️ Chọn loại phản ánh của bạn...</div>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="tag" style="background:#E0F2FE;color:#075985;">📱 VD: 0912 345 678</span>
+            <span class="tag" style="background:#E0F2FE;color:#075985;">📧 VD: ten@gmail.com</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="step-row s4">
+      <div class="step-connector">
+        <div class="step-circle">🏷️</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 4</div>
+          <div class="step-title">Chọn loại phản ánh</div>
+          <div class="step-desc">Gõ số <strong>1, 2, 3</strong> hoặc <strong>4</strong> tương ứng với nội dung muốn phản ánh:</div>
+          <div class="cat-grid">
+            <div class="cat-item" style="background:#EFF6FF;">
+              <div class="cat-num" style="background:#2563EB;">1</div>
+              <div>🏗️ Môi trường, Hạ tầng, Xây dựng</div>
+            </div>
+            <div class="cat-item" style="background:#F0FDF4;">
+              <div class="cat-num" style="background:#16A34A;">2</div>
+              <div>🏫 Văn hoá, Giáo dục, Y tế</div>
+            </div>
+            <div class="cat-item" style="background:#FFF7ED;">
+              <div class="cat-num" style="background:#EA580C;">3</div>
+              <div>📋 Dịch vụ công, Thủ tục hành chính</div>
+            </div>
+            <div class="cat-item" style="background:#FFF1F2;">
+              <div class="cat-num" style="background:#DC2626;">4</div>
+              <div>🚔 An ninh trật tự, PCCC</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="step-row s5">
+      <div class="step-connector">
+        <div class="step-circle">✏️</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 5</div>
+          <div class="step-title">Mô tả nội dung phản ánh</div>
+          <div class="step-desc">
+            Nhập chi tiết nội dung góp ý hoặc phản ánh. Mô tả càng rõ địa điểm, thời gian,
+            UBND phường càng xử lý được nhanh hơn.
+          </div>
+          <div class="chat-wrap">
+            <div class="bubble bubble-user">
+              <div class="bt bt-user">Đường hẻm 15 tổ 3 bị ngập nước mưa, nước thoát chậm ảnh hưởng đến việc đi lại của người dân</div>
+              <div class="bav bav-user">👤</div>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="tag" style="background:#DCFCE7;color:#166534;">✅ Tối thiểu 5 ký tự</span>
+            <span class="tag" style="background:#FEF9C3;color:#854D0E;">💡 Nêu rõ địa điểm, thời gian</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="step-row s6">
+      <div class="step-connector">
+        <div class="step-circle">📸</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 6</div>
+          <div class="step-title">Gửi hình ảnh minh hoạ <span style="font-size:13px;font-weight:600;color:#94A3B8;">(tuỳ chọn)</span></div>
+          <div class="step-desc">
+            Gửi tối đa <strong>5 ảnh</strong> để minh hoạ thêm.
+            Có thể chọn nhiều ảnh cùng lúc từ thư viện điện thoại.
+            Gõ <strong>1</strong> hoặc nhắn <strong>"xong"</strong> để bỏ qua bước này.
+          </div>
+          <div class="chat-wrap">
+            <div class="bubble bubble-bot">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">📎 Bạn có muốn gửi hình ảnh minh hoạ? (Tối đa 5 ảnh)<br>• Gửi ảnh từ thư viện điện thoại<br>• Gõ <strong>1</strong> để bỏ qua</div>
+            </div>
+            <div class="bubble bubble-bot" style="margin-top:2px;">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">✅ Đã thêm 2 ảnh (2/5)<br>Gửi thêm ảnh hoặc nhắn "xong" để tiếp tục.</div>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="tag" style="background:#FEE2E2;color:#991B1B;">📷 Tối đa 5 ảnh</span>
+            <span class="tag" style="background:#F1F5F9;color:#475569;">⏭ Gõ "1" hoặc "xong" để bỏ qua</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="step-row s7">
+      <div class="step-connector">
+        <div class="step-circle">✅</div>
+      </div>
+      <div class="step-body">
+        <div class="step-card">
+          <div class="step-num">Bước 7</div>
+          <div class="step-title">Xác nhận và hoàn tất</div>
+          <div class="step-desc">
+            Bot hiển thị tóm tắt để bạn kiểm tra lại. Gõ <strong>1</strong> để xác nhận gửi,
+            <strong>2</strong> để nhập lại từ đầu, hoặc <strong>3</strong> để huỷ.
+          </div>
+          <div class="chat-wrap">
+            <div class="bubble bubble-bot">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">
+                📋 Xác nhận góp ý:<br>
+                • Liên hệ: 0912345678<br>
+                • Loại: 🏗️ Môi trường, Hạ tầng<br>
+                • Nội dung: Đường hẻm 15 bị ngập...<br>
+                • Hình ảnh: ✅ 2 ảnh đính kèm<br><br>
+                1️⃣ Xác nhận gửi &nbsp;&nbsp; 2️⃣ Nhập lại &nbsp;&nbsp; 3️⃣ Huỷ
+              </div>
+            </div>
+            <div class="bubble bubble-user">
+              <div class="bt bt-user">1</div>
+              <div class="bav bav-user">👤</div>
+            </div>
+            <div class="bubble bubble-bot">
+              <div class="bav bav-bot">🏛️</div>
+              <div class="bt bt-bot">✅ Đã tiếp nhận phản ánh!<br>Mã phản ánh: <strong>#A3F2E</strong><br>UBND phường An Hải sẽ xử lý trong 2–3 ngày làm việc. Cảm ơn bạn! 🙏</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps -->
+
+  <!-- TIPS -->
+  <div class="section-label">
+    <div class="sl-dot" style="background:#F59E0B;"></div>
+    <div class="sl-text" style="color:#B45309;">Lưu ý quan trọng</div>
+    <div class="sl-line"></div>
+  </div>
+
+  <div class="tips-grid">
+    <div class="tip-card" style="border-color:#3B82F6;">
+      <div class="tip-icon">💬</div>
+      <div class="tip-title">Huỷ bất cứ lúc nào</div>
+      <div class="tip-desc">Nhắn <strong>"huỷ"</strong> tại bất kỳ bước nào để thoát ngay khỏi luồng.</div>
+    </div>
+    <div class="tip-card" style="border-color:#10B981;">
+      <div class="tip-icon">📷</div>
+      <div class="tip-title">Gửi nhiều ảnh cùng lúc</div>
+      <div class="tip-desc">Chọn nhiều ảnh trong thư viện và gửi một lần — bot nhận tất cả cùng lúc.</div>
+    </div>
+    <div class="tip-card" style="border-color:#8B5CF6;">
+      <div class="tip-icon">🔢</div>
+      <div class="tip-title">Lưu mã phản ánh</div>
+      <div class="tip-desc">Bot cấp <strong>mã #XXXXX</strong> sau khi gửi. Giữ lại để tra cứu tiến độ xử lý.</div>
+    </div>
+    <div class="tip-card" style="border-color:#F59E0B;">
+      <div class="tip-icon">⏱️</div>
+      <div class="tip-title">Thời gian xử lý</div>
+      <div class="tip-desc">Cam kết phản hồi trong <strong>2–3 ngày làm việc</strong> kể từ ngày tiếp nhận.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer-card">
+    <div>
+      <div class="footer-title">🏛️ UBND Phường An Hải – Đà Nẵng</div>
+      <div class="footer-sub">
+        Kênh tiếp nhận góp ý, phản ánh chính thức qua Zalo OA.<br>
+        Mọi ý kiến của người dân được ghi nhận và xử lý công khai, minh bạch.
+      </div>
+      <div class="footer-badges">
+        <span class="fbadge">📱 Zalo OA: UBND phường An Hải</span>
+        <span class="fbadge">🕐 Hỗ trợ: 7:30 – 17:00 (T2–T6)</span>
+      </div>
+    </div>
+    <div class="footer-qr">
+      <span>📷</span>
+      Quét QR<br>tìm OA<br>trên Zalo
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- Scroll to top -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Lên đầu trang">↑</button>
+
+<script>
+  const btn = document.getElementById('scrollTop');
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > 300);
+  });
+</script>
+</body>
+</html>
