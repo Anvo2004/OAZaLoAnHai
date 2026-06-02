@@ -42,7 +42,14 @@ function isUrl(text) {
 
 // Bắt đầu luồng góp ý
 async function startFeedback(userId, displayName = '') {
-  setState(userId, { step: 'waiting_contact', displayName });
+  // Nếu webhook không trả display_name → chủ động gọi API lấy tên ngay
+  let name = displayName;
+  if (!name) {
+    const profile = await getZaloUserProfile(userId);
+    name = profile?.display_name || '';
+    console.log(`[startFeedback] userId=${userId} profile=${JSON.stringify(profile)} → name="${name}"`);
+  }
+  setState(userId, { step: 'waiting_contact', displayName: name });
   await sendZaloText(userId,
     '💬 Chào mừng bạn đến với tính năng Góp ý - Phản ánh của UBND phường An Hải!\n\n' +
     '📞 Vui lòng nhập SĐT (09xxxxxxxx) hoặc email của bạn để chúng tôi có thể liên hệ lại:\n\n' +
@@ -315,6 +322,7 @@ async function saveFeedback(userId, state) {
     if (!displayName) {
       const profile = await getZaloUserProfile(userId);
       displayName = profile?.display_name || '';
+      console.log(`[saveFeedback] getZaloUserProfile userId=${userId} → profile=${JSON.stringify(profile)} displayName="${displayName}"`);
     }
 
     const deadline = new Date();

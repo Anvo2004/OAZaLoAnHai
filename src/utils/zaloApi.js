@@ -92,6 +92,7 @@ async function getZaloUserProfile(userId) {
       `https://openapi.zalo.me/v2.0/oa/getprofile?data=${encodeURIComponent(JSON.stringify({ user_id: String(userId) }))}`,
       { headers: { access_token: token } }
     );
+    console.log(`[Zalo] getprofile userId=${userId} → error=${res.data?.error} name="${res.data?.data?.display_name}" raw=${JSON.stringify(res.data)}`);
     if (res.data?.error === 0) return res.data.data;
     return null;
   } catch (err) {
