@@ -4,9 +4,13 @@ const Feedback = require('../models/Feedback');
 const Category = require('../models/Category');
 
 const MAX_IMAGES = 5;
+const BATCH_DELAY_MS = 1500; // Chờ 1.5s để gộp ảnh gửi cùng lúc
 
 // State machine lưu trạng thái từng user trong memory (10 phút timeout)
 const userStates = new Map();
+
+// Buffer gộp ảnh: { userId → { urls: [], timer } }
+const imageBatchBuffer = new Map();
 
 function setState(userId, data) {
   userStates.set(userId, { ...data, ts: Date.now() });
@@ -61,14 +65,14 @@ async function sendImagePrompt(userId, currentCount) {
   if (currentCount === 0) {
     await sendZaloText(userId,
       `📎 Bạn có muốn gửi hình ảnh minh hoạ không? (Tối đa ${MAX_IMAGES} ảnh)\n\n` +
-      '• Gửi ảnh trực tiếp từ điện thoại\n' +
+      '• Gửi 1 hoặc nhiều ảnh cùng lúc từ điện thoại\n' +
       '• Hoặc gửi URL ảnh (http/https)\n\n' +
       '1️⃣ Không có hình ảnh — gõ số 1 để bỏ qua'
     );
   } else {
     await sendZaloText(userId,
       `✅ Đã có ${currentCount}/${MAX_IMAGES} ảnh\n\n` +
-      `${currentCount < MAX_IMAGES ? '• Tiếp tục gửi thêm ảnh\n' : ''}` +
+      `${currentCount < MAX_IMAGES ? '• Gửi thêm ảnh (có thể gửi nhiều cùng lúc)\n' : ''}` +
       '• Nhắn "xong" để tiếp tục\n' +
       '1️⃣ Gõ số 1 để kết thúc phần ảnh'
     );
@@ -215,37 +219,65 @@ async function handleText(userId, text, displayName) {
   }
 }
 
-// Xử lý khi user gửi ảnh trực tiếp (event user_send_image)
+// Xử lý khi user gửi ảnh trực tiếp — gộp ảnh gửi cùng lúc qua debounce
 async function handleImage(userId, imageUrl) {
+  const state = getState(userId);
+  if (!state || state.step !== 'waiting_image') return;
+
+  // Thêm URL vào buffer và đặt lại timer
+  const existing = imageBatchBuffer.get(userId) || { urls: [], timer: null };
+  existing.urls.push(imageUrl);
+  if (existing.timer) clearTimeout(existing.timer);
+  existing.timer = setTimeout(() => _processBatch(userId), BATCH_DELAY_MS);
+  imageBatchBuffer.set(userId, existing);
+}
+
+// Xử lý batch ảnh sau khi hết thời gian chờ
+async function _processBatch(userId) {
+  const batch = imageBatchBuffer.get(userId);
+  imageBatchBuffer.delete(userId);
+  if (!batch || batch.urls.length === 0) return;
+
   const state = getState(userId);
   if (!state || state.step !== 'waiting_image') return;
 
   const currentImages = state.imageUrls || [];
 
+  // Nếu đã đủ ảnh trước đó
   if (currentImages.length >= MAX_IMAGES) {
     setState(userId, { ...state, step: 'waiting_confirm' });
-    await sendZaloText(userId, `⚠️ Đã đạt tối đa ${MAX_IMAGES} ảnh.`);
     await sendConfirmation(userId, state);
     return;
   }
 
-  await sendZaloText(userId, '⏳ Đang tải ảnh lên...');
-  try {
-    const cloudUrl = await uploadFromZaloImageUrl(imageUrl);
-    const newImages = [...currentImages, cloudUrl];
-    const updatedState = { ...state, imageUrls: newImages };
-    setState(userId, updatedState);
+  const remaining = MAX_IMAGES - currentImages.length;
+  const toProcess = batch.urls.slice(0, remaining);
+  const skipped = batch.urls.length - toProcess.length;
 
-    if (newImages.length >= MAX_IMAGES) {
-      setState(userId, { ...updatedState, step: 'waiting_confirm' });
-      await sendZaloText(userId, `✅ Đã thêm ảnh ${newImages.length}/${MAX_IMAGES}. Đã đạt tối đa.`);
-      await sendConfirmation(userId, updatedState);
-    } else {
-      await sendImagePrompt(userId, newImages.length);
-    }
-  } catch (err) {
-    console.error('[Cloudinary] Upload ảnh Zalo thất bại:', err.message);
-    await sendZaloText(userId, '⚠️ Không thể tải ảnh. Hãy thử lại hoặc nhắn "xong" để bỏ qua.');
+  await sendZaloText(userId, `⏳ Đang tải ${toProcess.length} ảnh lên...`);
+
+  // Upload song song tất cả ảnh trong batch
+  const results = await Promise.allSettled(
+    toProcess.map((url) => uploadFromZaloImageUrl(url))
+  );
+
+  const uploaded = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  const failed = results.filter((r) => r.status === 'rejected').length;
+
+  const newImages = [...currentImages, ...uploaded];
+  const updatedState = { ...state, imageUrls: newImages };
+
+  let msg = `✅ Đã thêm ${uploaded.length} ảnh (${newImages.length}/${MAX_IMAGES})`;
+  if (failed > 0) msg += ` · ${failed} ảnh lỗi, vui lòng thử lại`;
+  if (skipped > 0) msg += ` · ${skipped} ảnh bị bỏ qua (đã đủ tối đa)`;
+
+  if (newImages.length >= MAX_IMAGES) {
+    setState(userId, { ...updatedState, step: 'waiting_confirm' });
+    await sendZaloText(userId, msg + '. Đã đạt tối đa.');
+    await sendConfirmation(userId, updatedState);
+  } else {
+    setState(userId, updatedState);
+    await sendZaloText(userId, msg + `\n\nGửi thêm ảnh hoặc nhắn "xong" để tiếp tục.`);
   }
 }
 
