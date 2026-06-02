@@ -4,7 +4,7 @@ const Feedback = require('../models/Feedback');
 const Category = require('../models/Category');
 
 const MAX_IMAGES = 5;
-const BATCH_DELAY_MS = 1500; // Chờ 1.5s để gộp ảnh gửi cùng lúc
+const BATCH_DELAY_MS = 3000; // Chờ 3s để gộp ảnh gửi cùng lúc (Zalo có thể giao event chậm)
 
 // State machine lưu trạng thái từng user trong memory (10 phút timeout)
 const userStates = new Map();
@@ -271,8 +271,15 @@ async function _processBatch(userId) {
   const uploaded = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
   const failed = results.filter((r) => r.status === 'rejected').length;
 
-  const newImages = [...currentImages, ...uploaded];
-  const updatedState = { ...state, imageUrls: newImages };
+  // Đọc lại state mới nhất sau khi await upload xong để tránh race condition
+  // (nhiều batch chạy song song sẽ ghi đè lẫn nhau nếu dùng currentImages cũ)
+  const freshState = getState(userId);
+  if (!freshState || freshState.step !== 'waiting_image') return;
+  const freshImages = freshState.imageUrls || [];
+  const available = MAX_IMAGES - freshImages.length;
+  const finalUploaded = uploaded.slice(0, Math.max(0, available));
+  const newImages = [...freshImages, ...finalUploaded];
+  const updatedState = { ...freshState, imageUrls: newImages };
 
   let msg = `✅ Đã thêm ${uploaded.length} ảnh (${newImages.length}/${MAX_IMAGES})`;
   if (failed > 0) msg += ` · ${failed} ảnh lỗi, vui lòng thử lại`;
