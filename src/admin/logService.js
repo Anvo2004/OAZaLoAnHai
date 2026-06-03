@@ -21,9 +21,9 @@ async function redisCmd(...args) {
 async function addLog(entry) {
   const log = { ...entry, timestamp: new Date().toISOString() };
 
-  const pushed = await redisCmd('LPUSH', 'msg_log', JSON.stringify(log));
+  const pushed = await redisCmd('LPUSH', 'anhai_msg_log', JSON.stringify(log));
   if (pushed !== null) {
-    await redisCmd('LTRIM', 'msg_log', 0, MAX_LOGS - 1);
+    await redisCmd('LTRIM', 'anhai_msg_log', 0, MAX_LOGS - 1);
   } else {
     _memLogs.unshift(log);
     if (_memLogs.length > MAX_LOGS) _memLogs.length = MAX_LOGS;
@@ -31,7 +31,7 @@ async function addLog(entry) {
 }
 
 async function getLogs(limit = 50) {
-  const raw = await redisCmd('LRANGE', 'msg_log', 0, limit - 1);
+  const raw = await redisCmd('LRANGE', 'anhai_msg_log', 0, limit - 1);
   if (raw) {
     return raw.map((s) => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
   }

@@ -45,7 +45,7 @@ function saveToFile(groups) {
 }
 
 async function saveGroups(groups) {
-  const saved = await redisCmd('SET', 'oa_groups', JSON.stringify(groups));
+  const saved = await redisCmd('SET', 'anhai_oa_groups', JSON.stringify(groups));
   if (saved === null) saveToFile(groups);
 }
 
@@ -53,7 +53,7 @@ async function saveGroups(groups) {
 async function getStoredGroups() {
   if (_cache) return _cache;
 
-  const raw = await redisCmd('GET', 'oa_groups');
+  const raw = await redisCmd('GET', 'anhai_oa_groups');
   if (raw) {
     try { _cache = JSON.parse(raw); return _cache; } catch { /* fall through */ }
   }

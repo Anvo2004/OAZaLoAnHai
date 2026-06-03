@@ -125,9 +125,9 @@ async function syncFollowers() {
   _syncedAt = new Date().toISOString();
 
   // Lưu vào Redis nếu có, fallback file
-  const redisSaved = await redisCmd('SET', 'oa_followers', JSON.stringify(profiles));
+  const redisSaved = await redisCmd('SET', 'anhai_oa_followers', JSON.stringify(profiles));
   if (redisSaved !== null) {
-    await redisCmd('SET', 'oa_followers_synced_at', _syncedAt);
+    await redisCmd('SET', 'anhai_oa_followers_synced_at', _syncedAt);
   } else {
     saveToFile(profiles);
   }
@@ -140,7 +140,7 @@ async function getStoredFollowers() {
   if (_cache) return _cache;
 
   // Thử Redis
-  const raw = await redisCmd('GET', 'oa_followers');
+  const raw = await redisCmd('GET', 'anhai_oa_followers');
   if (raw) {
     try {
       _cache = JSON.parse(raw);
@@ -161,7 +161,7 @@ async function getStoredFollowers() {
 
 async function getSyncedAt() {
   if (_syncedAt) return _syncedAt;
-  const fromRedis = await redisCmd('GET', 'oa_followers_synced_at');
+  const fromRedis = await redisCmd('GET', 'anhai_oa_followers_synced_at');
   if (fromRedis) return fromRedis;
   const fromFile = loadFromFile();
   return fromFile?.syncedAt || null;
