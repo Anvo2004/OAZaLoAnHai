@@ -90,6 +90,23 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Debug: test Zalo getprofile (public, tạm thời) ────
+app.get('/debug-profile/:userId', async (req, res) => {
+  const axios = require('axios');
+  const { getToken } = require('./src/utils/zaloToken');
+  try {
+    const token = getToken();
+    const data = encodeURIComponent(JSON.stringify({ user_id: req.params.userId }));
+    const result = await axios.get(
+      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${data}`,
+      { headers: { access_token: token } }
+    );
+    res.json({ zalo_response: result.data, token_prefix: token.slice(0, 20) + '...' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Webhook Zalo ──────────────────────────────────────
 app.get('/webhook', (req, res) => {
   console.log('[Webhook] Xác thực Zalo webhook:', req.query.token);
