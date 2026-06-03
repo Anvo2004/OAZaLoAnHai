@@ -7,7 +7,7 @@ const { syncFollowers, getStoredFollowers, getSyncedAt } = require('../../src/ad
 const { getStoredGroups, addGroup, removeGroup } = require('../../src/admin/groupService')
 const { sendToUsers, getJob } = require('../../src/admin/broadcastService')
 const { getLogs } = require('../../src/admin/logService')
-const { uploadImageToZalo, uploadFileToZalo } = require('../../src/utils/zaloApi')
+const { uploadImageToZalo, uploadFileToZalo, getZaloUserProfile } = require('../../src/utils/zaloApi')
 
 const UPLOAD_DIR = path.join(__dirname, '../../public/images')
 
@@ -186,6 +186,23 @@ router.get('/logs', async (req, res) => {
   const limit = parseInt(req.query.limit) || 50
   const logs = await getLogs(limit)
   res.json({ logs })
+})
+
+// ── Debug: test getprofile cho 1 user cụ thể ──────────────────────
+router.get('/debug-profile/:userId', async (req, res) => {
+  const axios = require('axios')
+  const { getToken } = require('../../src/utils/zaloToken')
+  try {
+    const token = getToken()
+    const data = encodeURIComponent(JSON.stringify({ user_id: req.params.userId }))
+    const result = await axios.get(
+      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${data}`,
+      { headers: { access_token: token } }
+    )
+    res.json({ raw: result.data, token_prefix: token.slice(0, 20) + '...' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 module.exports = router
