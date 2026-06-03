@@ -31,6 +31,34 @@ router.get('/debug-profile/:userId', async (req, res) => {
 // Tất cả endpoints bên dưới chỉ cho superadmin
 router.use(requireRole('superadmin'))
 
+// ── Seed profile cache từ Feedback MongoDB ─────────────────────────
+// Chạy 1 lần để có ngay tên của những người đã từng gửi phản ánh
+router.post('/seed-profiles', async (req, res) => {
+  try {
+    const Feedback = require('../../src/models/Feedback')
+    const { saveProfile } = require('../../src/admin/profileCache')
+
+    const feedbacks = await Feedback.find(
+      { displayName: { $exists: true, $ne: '' } },
+      { userId: 1, displayName: 1 }
+    ).lean()
+
+    const uniqueMap = {}
+    for (const fb of feedbacks) {
+      if (fb.userId && fb.displayName && fb.displayName !== fb.userId) {
+        uniqueMap[fb.userId] = fb.displayName
+      }
+    }
+
+    const entries = Object.entries(uniqueMap)
+    await Promise.all(entries.map(([userId, name]) => saveProfile(userId, name)))
+
+    res.json({ ok: true, seeded: entries.length, message: `Đã seed ${entries.length} profile từ Feedback DB` })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // ── Followers ──────────────────────────────────────────────────────
 router.get('/followers', async (req, res) => {
   const followers = await getStoredFollowers()
