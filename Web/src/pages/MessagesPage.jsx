@@ -43,6 +43,29 @@ function fmtBytes(b) {
 function fmtTs(iso) {
   try { return new Date(iso).toLocaleString('vi-VN') } catch { return iso }
 }
+function hasRealName(f) {
+  return f.display_name && f.display_name !== f.user_id
+}
+
+function FollowerAvatar({ f, size = 8 }) {
+  const name = hasRealName(f) ? f.display_name : '?'
+  const initial = name[0]?.toUpperCase() ?? '?'
+  if (f.avatar) {
+    return (
+      <img
+        src={f.avatar}
+        alt={name}
+        className={`h-${size} w-${size} rounded-full object-cover shrink-0`}
+        onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+      />
+    )
+  }
+  return (
+    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+      {initial}
+    </div>
+  )
+}
 
 // ── Tab bar ────────────────────────────────────────────────────────────────────
 function TabBar({ active, onChange }) {
@@ -417,6 +440,7 @@ function SendTab({ followers, groups, syncedAt }) {
                     )}
                     {filteredFollowers.map(f => {
                       const checked = selectedFollowers.has(f.user_id)
+                      const realName = hasRealName(f)
                       return (
                         <button
                           key={f.user_id}
@@ -428,8 +452,11 @@ function SendTab({ followers, groups, syncedAt }) {
                           className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-blue-50 transition-colors"
                         >
                           {checked ? <CheckSquare className="h-4 w-4 text-blue-500 shrink-0" /> : <Square className="h-4 w-4 text-slate-300 shrink-0" />}
+                          <FollowerAvatar f={f} size={7} />
                           <div className="min-w-0">
-                            <p className="text-xs font-medium truncate">{f.display_name || f.user_id}</p>
+                            <p className={cn('text-xs font-medium truncate', !realName && 'text-slate-400 italic')}>
+                              {realName ? f.display_name : 'Chưa có tên'}
+                            </p>
                             <p className="text-[10px] text-slate-400 font-mono">{f.user_id}</p>
                           </div>
                         </button>
@@ -676,32 +703,54 @@ function FollowersTab() {
                           className="rounded"
                         />
                       </th>
-                      <th className="text-left pb-2 font-medium text-slate-500">Người dùng</th>
+                      <th className="text-left pb-2 font-medium text-slate-500 pl-2">Người dùng</th>
                       <th className="text-left pb-2 font-medium text-slate-500">Zalo ID</th>
+                      <th className="w-16 pb-2" />
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 && (
-                      <tr><td colSpan={3} className="py-8 text-center text-slate-400">
+                      <tr><td colSpan={4} className="py-8 text-center text-slate-400">
                         {followers.length === 0 ? 'Chưa có dữ liệu. Nhấn "Đồng bộ" để lấy danh sách.' : 'Không tìm thấy.'}
                       </td></tr>
                     )}
-                    {filtered.map(f => (
-                      <tr key={f.user_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                        <td className="py-2.5">
-                          <input type="checkbox" checked={checkedIds.has(f.user_id)}
-                            onChange={e => {
-                              const next = new Set(checkedIds)
-                              if (e.target.checked) next.add(f.user_id); else next.delete(f.user_id)
-                              setCheckedIds(next)
-                            }}
-                            className="rounded"
-                          />
-                        </td>
-                        <td className="py-2.5 font-medium">{f.display_name || f.user_id}</td>
-                        <td className="py-2.5 font-mono text-xs text-slate-500">{f.user_id}</td>
-                      </tr>
-                    ))}
+                    {filtered.map(f => {
+                      const realName = hasRealName(f)
+                      return (
+                        <tr key={f.user_id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                          <td className="py-2">
+                            <input type="checkbox" checked={checkedIds.has(f.user_id)}
+                              onChange={e => {
+                                const next = new Set(checkedIds)
+                                if (e.target.checked) next.add(f.user_id); else next.delete(f.user_id)
+                                setCheckedIds(next)
+                              }}
+                              className="rounded"
+                            />
+                          </td>
+                          <td className="py-2 pl-2">
+                            <div className="flex items-center gap-2.5">
+                              <FollowerAvatar f={f} size={8} />
+                              <div>
+                                <p className={cn('text-sm font-medium', !realName && 'text-slate-400 italic')}>
+                                  {realName ? f.display_name : 'Chưa có tên'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2 font-mono text-xs text-slate-500">{f.user_id}</td>
+                          <td className="py-2">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(f.user_id).then(() => {})}
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 transition-colors"
+                              title="Sao chép ID"
+                            >
+                              Sao chép
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
