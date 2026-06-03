@@ -90,18 +90,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Debug: test Zalo getprofile (public, tạm thời) ────
+// ── Debug: test Zalo getprofile v2 vs v3 (public, tạm thời) ────
 app.get('/debug-profile/:userId', async (req, res) => {
   const axios = require('axios');
   const { getToken } = require('./src/utils/zaloToken');
   try {
     const token = getToken();
-    const data = encodeURIComponent(JSON.stringify({ user_id: req.params.userId }));
-    const result = await axios.get(
-      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${data}`,
+    const uid = req.params.userId;
+
+    // Test v2 getprofile (bị block IP ngoài VN)
+    const v2data = encodeURIComponent(JSON.stringify({ user_id: uid }));
+    const v2 = await axios.get(
+      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${v2data}`,
       { headers: { access_token: token } }
-    );
-    res.json({ zalo_response: result.data, token_prefix: token.slice(0, 20) + '...' });
+    ).then(r => r.data).catch(e => ({ error: e.message }));
+
+    // Test v3 user/detail (cần permission Quản lý người dùng)
+    const v3data = encodeURIComponent(JSON.stringify({ user_id: uid }));
+    const v3 = await axios.get(
+      `https://openapi.zalo.me/v3.0/oa/user/detail?data=${v3data}`,
+      { headers: { access_token: token } }
+    ).then(r => r.data).catch(e => ({ error: e.message }));
+
+    res.json({ v2_getprofile: v2, v3_user_detail: v3, token_prefix: token.slice(0, 20) + '...' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
