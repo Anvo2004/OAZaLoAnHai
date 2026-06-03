@@ -6,6 +6,7 @@ const {
   handleContactCard,
   isFeedbackTrigger,
 } = require('../services/feedbackService');
+const { saveProfile } = require('../admin/profileCache');
 
 async function handleWebhook(body) {
   const eventName = body.event_name;
@@ -13,6 +14,13 @@ async function handleWebhook(body) {
   if (!userId) return;
 
   console.log(`[Event] ${eventName} | userId: ${userId}`);
+
+  // Cache profile từ mọi sự kiện có sender info
+  const displayName = body.sender?.display_name || body.follower?.display_name || '';
+  const avatar = body.sender?.avatar || body.follower?.avatar || '';
+  if (displayName) {
+    saveProfile(userId, displayName, avatar).catch(() => {});
+  }
 
   // Chào mừng khi follow OA
   if (eventName === 'follow') {
@@ -30,8 +38,6 @@ async function handleWebhook(body) {
     const text = (body.message?.text || '').trim();
     if (!text) return;
 
-    const displayName = body.sender?.display_name || '';
-
     // Kiểm tra contact card trong attachment
     const attachments = body.message?.attachments || [];
     const contactAttachment = attachments.find(a => a.type === 'contact');
@@ -44,16 +50,14 @@ async function handleWebhook(body) {
       }
     }
 
-    // Xử lý trong luồng góp ý (trigger chỉ kích hoạt khi chưa có luồng đang chạy)
     await handleText(userId, text, displayName);
     return;
   }
 
-  // User click menu "Truy vấn tự động" (submit_info)
+  // User click menu (submit_info)
   if (eventName === 'user_submit_info') {
     const action = (body.info?.action_payload || body.info?.action || body.info?.data || '').trim();
     if (isFeedbackTrigger(action) || action === '#goopy') {
-      const displayName = body.sender?.display_name || '';
       await startFeedback(userId, displayName);
     }
     return;

@@ -2,6 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { getToken, refreshAccessToken } = require('../utils/zaloToken');
+const { getProfiles } = require('./profileCache');
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const FOLLOWERS_FILE = path.join(DATA_DIR, 'followers.json');
@@ -109,17 +110,14 @@ async function syncFollowers() {
   console.log('[Follower] Đang đồng bộ danh sách follower...');
   const ids = await fetchAllFollowerIds();
 
-  const profiles = [];
-  const limit = Math.min(ids.length, 200);
-  for (let i = 0; i < limit; i++) {
-    const profile = await getFollowerProfile(ids[i]);
-    profiles.push(profile);
-    await new Promise((r) => setTimeout(r, 200));
-  }
+  // Lấy profile từ cache webhook (không bị giới hạn IP như getprofile API)
+  const profileMap = await getProfiles(ids);
 
-  for (let i = limit; i < ids.length; i++) {
-    profiles.push({ user_id: ids[i], display_name: ids[i], avatar: '' });
-  }
+  const profiles = ids.map(id => ({
+    user_id: id,
+    display_name: profileMap[id]?.display_name || '',
+    avatar: profileMap[id]?.avatar || '',
+  }));
 
   _cache = profiles;
   _syncedAt = new Date().toISOString();
