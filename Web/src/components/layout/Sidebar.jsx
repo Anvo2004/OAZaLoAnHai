@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, Building2 } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, Building2, Send } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -80,6 +80,7 @@ export default function Sidebar() {
             <div className="space-y-0.5">
               <NavItem to="/users"    icon={Users}    label="Tài khoản Admin" />
               <NavItem to="/settings" icon={Settings} label="Cài đặt nhóm Zalo" />
+              <NavItem to="/messages" icon={Send}     label="Gửi tin nhắn Zalo" />
             </div>
           </>
         )}

@@ -11,6 +11,7 @@ import FeedbackDetailPage from '@/pages/FeedbackDetailPage'
 import UsersPage from '@/pages/UsersPage'
 import UserFormPage from '@/pages/UserFormPage'
 import SettingsPage from '@/pages/SettingsPage'
+import MessagesPage from '@/pages/MessagesPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +36,7 @@ export default function App() {
                 <Route path="/users/new" element={<UserFormPage />} />
                 <Route path="/users/:id/edit" element={<UserFormPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
               </Route>
             </Route>
           </Routes>

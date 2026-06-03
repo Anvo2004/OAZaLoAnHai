@@ -1,4 +1,6 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const { getToken, refreshAccessToken } = require('./zaloToken');
 const CONFIG = require('../config');
 
@@ -54,14 +56,42 @@ async function uploadImageBufferToZalo(buffer, filename) {
   return attachmentId;
 }
 
+// Upload image from local file path (used by broadcast upload endpoint)
+async function uploadImageToZalo(filepath) {
+  const buffer = fs.readFileSync(filepath);
+  const filename = path.basename(filepath);
+  return uploadImageBufferToZalo(buffer, filename);
+}
+
+// Upload file (docx/pdf/xlsx) to Zalo, returns file token
+async function uploadFileToZalo(filepath, originalFilename) {
+  const FormData = require('form-data');
+  const form = new FormData();
+  form.append('file', fs.createReadStream(filepath), { filename: originalFilename });
+
+  const doUpload = (token) =>
+    axios.post('https://openapi.zalo.me/v2.0/oa/upload/file', form, {
+      headers: { ...form.getHeaders(), access_token: token },
+    });
+
+  let res = await doUpload(getToken());
+  if (res.data?.error === -216) {
+    const newToken = await refreshAccessToken();
+    res = await doUpload(newToken);
+  }
+  if (res.data?.error !== 0) throw new Error(`Upload file thất bại: ${res.data?.message}`);
+  const token = res.data?.data?.token;
+  if (!token) throw new Error('Không lấy được file token từ Zalo');
+  return token;
+}
+
 async function sendZaloButtons(userId, text, buttons) {
   const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
   const btnLabels = buttons.map((b, i) => `${numbers[i]} ${b.title}`).join('\n');
   await sendZaloText(userId, `${text}\n\n${btnLabels}`);
 }
 
-// Gửi tin vào nhóm Zalo cụ thể (theo groupId)
-// mentions: [{ user_id, display_name, pos, len }] — dùng khi muốn @mention thành viên
+// Gửi text vào nhóm Zalo (theo groupId)
 async function sendZaloToGroup(text, groupId, mentions = []) {
   const targetId = groupId || CONFIG.ZALO_GROUP_ID;
   if (!targetId) {
@@ -80,9 +110,134 @@ async function sendZaloToGroup(text, groupId, mentions = []) {
   }
 }
 
+// Alias cho broadcastService (signature khác: groupId trước, text sau)
+async function sendZaloTextToGroup(groupId, text) {
+  return sendZaloToGroup(text, groupId);
+}
+
 // Tương thích ngược — gửi vào nhóm mặc định
 async function sendZaloGroupText(text) {
   return sendZaloToGroup(text, CONFIG.ZALO_GROUP_ID);
+}
+
+// Gửi nhiều ảnh đến user (mỗi ảnh 1 message)
+async function sendZaloImages(userId, attachmentIds) {
+  for (const attachId of attachmentIds) {
+    try {
+      await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+        recipient: { user_id: String(userId) },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'media',
+              elements: [{ media_type: 'image', attachment_id: attachId }],
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error('[Zalo] Gửi ảnh thất bại:', err.message);
+    }
+  }
+}
+
+// Gửi nhiều ảnh vào nhóm
+async function sendZaloImagesToGroup(groupId, attachmentIds) {
+  for (const attachId of attachmentIds) {
+    try {
+      await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+        recipient: { group_id: String(groupId) },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'media',
+              elements: [{ media_type: 'image', attachment_id: attachId }],
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error('[Zalo] Gửi ảnh nhóm thất bại:', err.message);
+    }
+  }
+}
+
+// Gửi ảnh kèm nút link (dùng cho video preview)
+async function sendZaloImageWithLink(userId, attachmentId, url, buttonTitle = '▶ Xem') {
+  try {
+    await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+      recipient: { user_id: String(userId) },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'media',
+            elements: [{
+              media_type: 'image',
+              attachment_id: attachmentId,
+              buttons: [{ title: buttonTitle, type: 'oa.open.url', payload: { url } }],
+            }],
+          },
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[Zalo] Gửi image+link thất bại:', err.message);
+    throw err;
+  }
+}
+
+// Gửi ảnh kèm nút link vào nhóm
+async function sendZaloImageWithLinkToGroup(groupId, attachmentId, url, buttonTitle = '▶ Xem') {
+  try {
+    await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+      recipient: { group_id: String(groupId) },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'media',
+            elements: [{
+              media_type: 'image',
+              attachment_id: attachmentId,
+              buttons: [{ title: buttonTitle, type: 'oa.open.url', payload: { url } }],
+            }],
+          },
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[Zalo] Gửi image+link nhóm thất bại:', err.message);
+    throw err;
+  }
+}
+
+// Gửi file đến user
+async function sendZaloFile(userId, fileToken) {
+  try {
+    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+      recipient: { user_id: String(userId) },
+      message: { attachment: { type: 'file', payload: { token: fileToken } } },
+    });
+    if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi file:', res.data);
+  } catch (err) {
+    console.error('[Zalo] Gửi file thất bại:', err.message);
+  }
+}
+
+// Gửi file vào nhóm
+async function sendZaloFileToGroup(groupId, fileToken) {
+  try {
+    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+      recipient: { group_id: String(groupId) },
+      message: { attachment: { type: 'file', payload: { token: fileToken } } },
+    });
+    if (res.data?.error !== 0) console.error('[Zalo] Lỗi gửi file nhóm:', res.data);
+  } catch (err) {
+    console.error('[Zalo] Gửi file nhóm thất bại:', err.message);
+  }
 }
 
 async function getZaloUserProfile(userId) {
@@ -101,7 +256,6 @@ async function getZaloUserProfile(userId) {
   }
 }
 
-// Lấy danh sách thành viên nhóm Zalo — trả về { members, raw } để debug
 async function getZaloGroupMembers(groupId) {
   try {
     const token = getToken();
@@ -119,7 +273,6 @@ async function getZaloGroupMembers(groupId) {
     }
 
     const d = res.data.data;
-    // Zalo có thể trả về members tại data.members hoặc trực tiếp data là array
     const members = Array.isArray(d) ? d
       : Array.isArray(d?.members) ? d.members
       : [];
@@ -134,10 +287,19 @@ async function getZaloGroupMembers(groupId) {
 
 module.exports = {
   sendZaloText,
+  sendZaloTextToGroup,
   sendZaloButtons,
   sendZaloToGroup,
   sendZaloGroupText,
+  sendZaloImages,
+  sendZaloImagesToGroup,
+  sendZaloImageWithLink,
+  sendZaloImageWithLinkToGroup,
+  sendZaloFile,
+  sendZaloFileToGroup,
   getZaloUserProfile,
   uploadImageBufferToZalo,
+  uploadImageToZalo,
+  uploadFileToZalo,
   getZaloGroupMembers,
 };
