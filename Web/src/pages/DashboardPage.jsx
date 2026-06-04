@@ -202,25 +202,43 @@ export default function DashboardPage() {
                 <p className="text-sm text-slate-400">Chưa có góp ý nào</p>
               </div>
             ) : (
-              data.recent.map((fb) => (
-                <Link
-                  key={fb._id}
-                  to={`/feedbacks/${fb._id}`}
-                  className="flex items-start gap-3 px-5 py-3.5 hover:bg-blue-50/60 transition-colors group"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white text-xs font-bold shadow-sm shadow-blue-200">
-                    {(fb.displayName || fb.contact || '?')[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate text-slate-700 group-hover:text-blue-600 transition-colors">
-                      {fb.displayName || fb.contact}
-                    </p>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">{fb.content}</p>
-                    <p className="text-[11px] text-slate-300 mt-0.5">{formatDateShort(fb.createdAt)}</p>
-                  </div>
-                  <StatusBadge status={fb.status} />
-                </Link>
-              ))
+              data.recent.map((fb) => {
+                const name = fb.displayName || fb.contact || '?'
+                const initial = name[0].toUpperCase()
+                return (
+                  <Link
+                    key={fb._id}
+                    to={`/feedbacks/${fb._id}`}
+                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-blue-50/60 transition-colors group"
+                  >
+                    {fb.avatar ? (
+                      <img
+                        src={fb.avatar}
+                        alt={name}
+                        className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                      />
+                    ) : null}
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white text-xs font-bold shadow-sm shadow-blue-200"
+                      style={{ display: fb.avatar ? 'none' : 'flex' }}
+                    >
+                      {initial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate text-slate-700 group-hover:text-blue-600 transition-colors">
+                        {fb.displayName || '(Ẩn danh)'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">{fb.contact}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{fb.content}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <StatusBadge status={fb.status} />
+                      <p className="text-[11px] text-slate-300">{formatDateShort(fb.createdAt)}</p>
+                    </div>
+                  </Link>
+                )
+              })
             )}
           </div>
         </div>

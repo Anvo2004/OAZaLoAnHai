@@ -1,5 +1,6 @@
 const router = require('express').Router()
 const Feedback = require('../../src/models/Feedback')
+const { getProfiles } = require('../../src/admin/profileCache')
 
 router.get('/', async (req, res) => {
   try {
@@ -15,6 +16,20 @@ router.get('/', async (req, res) => {
       .limit(5)
       .populate('assignedTo', 'fullName')
       .lean()
+
+    // Enrich displayName + avatar từ Redis profile cache
+    const missingIds = recent.filter((f) => !f.displayName && f.userId).map((f) => f.userId)
+    if (missingIds.length) {
+      const profiles = await getProfiles(missingIds)
+      recent.forEach((f) => {
+        if (f.userId && profiles[f.userId]) {
+          if (!f.displayName && profiles[f.userId].display_name) {
+            f.displayName = profiles[f.userId].display_name
+          }
+          if (!f.avatar) f.avatar = profiles[f.userId].avatar || ''
+        }
+      })
+    }
 
     const days = [], counts = []
     for (let i = 6; i >= 0; i--) {
