@@ -1,17 +1,34 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
-function CategoryMemberPanel({ cat }) {
+function Avatar({ name, avatar, size = 8 }) {
+  const initial = (name || '?')[0].toUpperCase()
+  if (avatar) {
+    return (
+      <img
+        src={avatar}
+        alt={name}
+        className={`h-${size} w-${size} rounded-full object-cover shrink-0`}
+        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+      />
+    )
+  }
+  return (
+    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+      {initial}
+    </div>
+  )
+}
+
+function CategoryMemberPanel({ cat, followers }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ displayName: '', zaloUserId: '' })
+  const [showPicker, setShowPicker] = useState(false)
+  const [search, setSearch] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['zalo-members', cat._id],
@@ -20,10 +37,13 @@ function CategoryMemberPanel({ cat }) {
   })
 
   const addMutation = useMutation({
-    mutationFn: () => api.post(`/api/zalo-members/manual/${cat._id}`, form).then((r) => r.data),
-    onSuccess: () => {
-      toast.success('Đã thêm thành viên')
-      setForm({ displayName: '', zaloUserId: '' })
+    mutationFn: (follower) =>
+      api.post(`/api/zalo-members/manual/${cat._id}`, {
+        displayName: follower.display_name || follower.user_id,
+        zaloUserId: follower.user_id,
+      }).then((r) => r.data),
+    onSuccess: (_, follower) => {
+      toast.success(`Đã thêm ${follower.display_name || follower.user_id}`)
       queryClient.invalidateQueries({ queryKey: ['zalo-members', cat._id] })
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi thêm'),
@@ -32,7 +52,7 @@ function CategoryMemberPanel({ cat }) {
   const deleteMutation = useMutation({
     mutationFn: (memberId) => api.delete(`/api/zalo-members/member/${memberId}`).then((r) => r.data),
     onSuccess: () => {
-      toast.success('Đã xóa')
+      toast.success('Đã xóa thành viên')
       queryClient.invalidateQueries({ queryKey: ['zalo-members', cat._id] })
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi xóa'),
@@ -48,6 +68,19 @@ function CategoryMemberPanel({ cat }) {
   })
 
   const members = data?.members ?? []
+  const memberIds = useMemo(() => new Set(members.map((m) => m.zaloUserId)), [members])
+
+  const filteredFollowers = useMemo(() => {
+    const q = search.toLowerCase()
+    return followers.filter((f) => {
+      if (memberIds.has(f.user_id)) return false
+      if (!q) return true
+      return (
+        f.display_name?.toLowerCase().includes(q) ||
+        f.user_id?.includes(q)
+      )
+    })
+  }, [followers, memberIds, search])
 
   return (
     <Card>
@@ -60,7 +93,7 @@ function CategoryMemberPanel({ cat }) {
           <CardTitle className="text-base flex items-center gap-2">
             {cat.icon} {cat.name}
             <span className="text-xs font-normal text-slate-400 ml-1">
-              · Group ID: <code className="bg-slate-100 px-1 rounded">{cat.zaloGroupId}</code>
+              · <code className="bg-slate-100 px-1 rounded text-[11px]">{cat.zaloGroupId}</code>
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -75,9 +108,7 @@ function CategoryMemberPanel({ cat }) {
               disabled={syncMutation.isPending}
               className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
             >
-              {syncMutation.isPending
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <RefreshCw className="h-3 w-3" />}
+              {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
               Đồng bộ
             </button>
             {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
@@ -86,76 +117,122 @@ function CategoryMemberPanel({ cat }) {
       </CardHeader>
 
       {open && (
-        <CardContent className="pt-4 space-y-4">
-          {/* Form thêm thành viên */}
-          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 space-y-3">
-            <p className="text-xs font-semibold text-blue-700 flex items-center gap-1">
-              <Plus className="h-3.5 w-3.5" /> Thêm thành viên vào nhóm này
-            </p>
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs">Họ tên</Label>
-                <Input
-                  placeholder="Nguyễn Văn A"
-                  className="h-9 text-sm"
-                  value={form.displayName}
-                  onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-                />
-              </div>
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs">Zalo User ID</Label>
-                <Input
-                  placeholder="123456789"
-                  className="h-9 text-sm"
-                  value={form.zaloUserId}
-                  onChange={(e) => setForm((f) => ({ ...f, zaloUserId: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  size="sm"
-                  className="h-9"
-                  onClick={() => {
-                    if (!form.displayName.trim()) { toast.error('Vui lòng nhập họ tên'); return }
-                    if (!form.zaloUserId.trim()) { toast.error('Vui lòng nhập Zalo User ID'); return }
-                    addMutation.mutate()
-                  }}
-                  disabled={addMutation.isPending}
-                >
-                  {addMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
-            </div>
-          </div>
+        <CardContent className="pt-4 space-y-3">
 
-          {/* Danh sách members */}
+          {/* Nút mở picker */}
+          {!showPicker && (
+            <button
+              type="button"
+              onClick={() => setShowPicker(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors w-full"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm thành viên vào nhóm này
+            </button>
+          )}
+
+          {/* Follower picker */}
+          {showPicker && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-blue-700">Chọn từ danh sách follower</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowPicker(false); setSearch('') }}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-8 pl-8 pr-3 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400"
+                />
+              </div>
+
+              {/* Follower list */}
+              <div className="max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white divide-y divide-slate-50">
+                {followers.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate-400">
+                    Chưa có follower — đồng bộ follower ở trang Gửi tin nhắn trước
+                  </p>
+                ) : filteredFollowers.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate-400">
+                    {search ? 'Không tìm thấy follower phù hợp' : 'Tất cả follower đã được thêm vào nhóm này'}
+                  </p>
+                ) : (
+                  filteredFollowers.map((f) => {
+                    const hasName = f.display_name && f.display_name !== f.user_id
+                    return (
+                      <button
+                        key={f.user_id}
+                        type="button"
+                        onClick={() => addMutation.mutate(f)}
+                        disabled={addMutation.isPending}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-blue-50 transition-colors text-left disabled:opacity-50"
+                      >
+                        <Avatar name={f.display_name} avatar={f.avatar} size={8} />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium truncate ${hasName ? 'text-slate-700' : 'text-slate-400 italic'}`}>
+                            {hasName ? f.display_name : '(Chưa có tên)'}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-mono">{f.user_id}</p>
+                        </div>
+                        <Plus className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {filteredFollowers.length} follower chưa trong nhóm · {members.length} đã trong nhóm
+              </p>
+            </div>
+          )}
+
+          {/* Danh sách thành viên đã thêm */}
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-slate-400 py-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
             </div>
           ) : members.length === 0 ? (
-            <div className="text-center py-4 text-sm text-slate-400">
+            <div className="text-center py-5 text-sm text-slate-400">
               <Users className="h-8 w-8 mx-auto mb-2 text-slate-200" />
-              Chưa có thành viên nào — thêm bằng form bên trên
+              Chưa có thành viên nào
             </div>
           ) : (
             <div className="divide-y divide-slate-100 rounded-lg border border-slate-100 overflow-hidden">
-              {members.map((m) => (
-                <div key={m._id} className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{m.displayName || '(Không tên)'}</p>
-                    <p className="text-xs text-slate-400 font-mono">ID: {m.zaloUserId}</p>
+              {members.map((m) => {
+                const follower = followers.find((f) => f.user_id === m.zaloUserId)
+                return (
+                  <div key={m._id} className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar name={m.displayName} avatar={follower?.avatar || m.avatar} size={8} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">{m.displayName || '(Không tên)'}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">{m.zaloUserId}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Xóa ${m.displayName || m.zaloUserId} khỏi nhóm?`)) {
+                          deleteMutation.mutate(m._id)
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors ml-2 shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Xóa ${m.displayName}?`)) deleteMutation.mutate(m._id)
-                    }}
-                    className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
@@ -170,7 +247,13 @@ export default function SettingsPage() {
     queryFn: () => api.get('/api/categories').then((r) => r.data),
   })
 
+  const { data: followersData } = useQuery({
+    queryKey: ['broadcast-followers'],
+    queryFn: () => api.get('/api/broadcast/followers').then((r) => r.data),
+  })
+
   const categories = catsData?.categories ?? []
+  const followers = followersData?.followers ?? []
 
   return (
     <div className="space-y-4 animate-fade-in max-w-2xl">
@@ -188,7 +271,7 @@ export default function SettingsPage() {
       ) : (
         <div className="space-y-3">
           {categories.map((cat) => (
-            <CategoryMemberPanel key={cat._id} cat={cat} />
+            <CategoryMemberPanel key={cat._id} cat={cat} followers={followers} />
           ))}
         </div>
       )}
