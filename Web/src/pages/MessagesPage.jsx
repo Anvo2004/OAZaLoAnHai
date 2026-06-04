@@ -596,6 +596,11 @@ function FollowersTab() {
     queryFn: () => api.get('/api/broadcast/groups').then(r => r.data),
   })
 
+  const { data: catsData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/api/categories').then(r => r.data),
+  })
+
   const [tokenExpired, setTokenExpired] = useState(false)
 
   const syncMut = useMutation({
@@ -634,6 +639,22 @@ function FollowersTab() {
       toast.success('Đã xoá nhóm')
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi xoá'),
+  })
+
+  const importCatsMut = useMutation({
+    mutationFn: async () => {
+      const cats = catsData?.categories || []
+      const existingIds = new Set((groupsData?.groups || []).map(g => g.group_id))
+      const toAdd = cats.filter(c => c.zaloGroupId && !existingIds.has(c.zaloGroupId))
+      if (!toAdd.length) throw new Error('Tất cả nhóm danh mục đã được thêm rồi')
+      await Promise.all(toAdd.map(c => api.post('/api/broadcast/groups', { group_id: c.zaloGroupId, name: c.name })))
+      return toAdd.length
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ['broadcast-groups'] })
+      toast.success(`Đã nhập ${count} nhóm từ danh mục`)
+    },
+    onError: (e) => toast.error(e.message || 'Lỗi nhập nhóm'),
   })
 
   const followers = followersData?.followers || []
@@ -765,8 +786,16 @@ function FollowersTab() {
             <CardTitle className="text-base">Danh sách Nhóm</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
-              ✅ Nhóm được thêm thủ công bằng Group ID từ OA Manager.
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
+              <span>✅ Nhóm được thêm bằng Group ID từ OA Manager.</span>
+              <button
+                onClick={() => importCatsMut.mutate()}
+                disabled={importCatsMut.isPending || !catsData?.categories?.length}
+                className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-md bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                {importCatsMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Nhập từ danh mục
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Input
