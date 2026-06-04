@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Send, RefreshCw, Loader2, Image, Video, FileText, Users, History,
@@ -6,6 +7,7 @@ import {
   AlertTriangle, ExternalLink,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -922,6 +924,9 @@ function LogsTab() {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function MessagesPage() {
+  const { user } = useAuth()
+  if (user?.role !== 'superadmin') return <Navigate to="/dashboard" replace />
+
   const [tab, setTab] = useState('send')
 
   const { data: followersData } = useQuery({
