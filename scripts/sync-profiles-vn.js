@@ -1,31 +1,28 @@
 /**
  * sync-profiles-vn.js
- * Chạy trên VPS Việt Nam để lấy tên + avatar follower từ Zalo API
+ * Chạy trên VPS Việt Nam — tự lấy Zalo token từ Redis, không cần paste tay.
  *
  * Cách dùng:
- *   UPSTASH_REDIS_REST_URL=xxx UPSTASH_REDIS_REST_TOKEN=xxx ZALO_OA_TOKEN=xxx node sync-profiles-vn.js
- *
- * Hoặc tạo file .env rồi chạy: node -r dotenv/config sync-profiles-vn.js
+ *   UPSTASH_REDIS_REST_URL=xxx UPSTASH_REDIS_REST_TOKEN=xxx node sync-profiles-vn.js
  */
 
 const https = require('https');
 
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const ZALO_TOKEN  = process.env.ZALO_OA_TOKEN;
 
-if (!REDIS_URL || !REDIS_TOKEN || !ZALO_TOKEN) {
-  console.error('❌ Thiếu env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, ZALO_OA_TOKEN');
+if (!REDIS_URL || !REDIS_TOKEN) {
+  console.error('❌ Thiếu: UPSTASH_REDIS_REST_URL và UPSTASH_REDIS_REST_TOKEN');
   process.exit(1);
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── HTTP helpers ───────────────────────────────────────────────────
 function httpPost(url, body, headers) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const data = JSON.stringify(body);
     const req = https.request({
-      hostname: u.hostname, path: u.pathname + u.search,
+      hostname: u.hostname, path: u.pathname,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers },
     }, res => {
@@ -55,78 +52,101 @@ async function redis(...args) {
   return r?.result ?? null;
 }
 
-async function delay(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+const delay = ms => new Promise(r => setTimeout(r, ms));
 
 // ── Main ────────────────────────────────────────────────────────────
 async function main() {
   console.log('🚀 Bắt đầu sync profile từ VPS Việt Nam...\n');
 
-  // 1. Lấy danh sách follower từ Redis
-  const raw = await redis('GET', 'anhai_oa_followers');
-  if (!raw) {
-    console.error('❌ Không có dữ liệu followers trong Redis (key: anhai_oa_followers)');
-    console.log('👉 Bấm Đồng bộ trong trang Followers trước rồi chạy lại script này');
+  // 1. Lấy Zalo token từ Redis (server tự refresh, luôn mới nhất)
+  const zaloToken = await redis('GET', 'anhai_zalo_access_token');
+  if (!zaloToken) {
+    console.error('❌ Không tìm thấy anhai_zalo_access_token trong Redis');
+    console.log('   Đảm bảo Render server đã chạy ít nhất 1 lần để lưu token vào Redis');
     process.exit(1);
   }
+  console.log(`✅ Đọc Zalo token từ Redis: ${zaloToken.slice(0, 20)}...`);
 
+  // Test token còn hạn không
+  const testUid = '0';
+  const testData = encodeURIComponent(JSON.stringify({ user_id: testUid }));
+  const testResult = await httpGet(
+    `https://openapi.zalo.me/v2.0/oa/getprofile?data=${testData}`,
+    { access_token: zaloToken }
+  );
+  if (testResult?.error === -216) {
+    console.error('❌ Token hết hạn. Cần lấy token mới từ Render và lưu lại vào Redis.');
+    process.exit(1);
+  }
+  console.log(`✅ Token hợp lệ (test response: error=${testResult?.error})\n`);
+
+  // 2. Lấy danh sách follower
+  const raw = await redis('GET', 'anhai_oa_followers');
+  if (!raw) {
+    console.error('❌ Không có dữ liệu followers (key: anhai_oa_followers)');
+    console.log('   Bấm Đồng bộ trên trang Followers trước rồi chạy lại script này');
+    process.exit(1);
+  }
   const followers = JSON.parse(raw);
-  console.log(`📋 Tổng follower: ${followers.length}`);
+  console.log(`📋 Tổng follower: ${followers.length}\n`);
 
-  // 2. Fetch profile từng người
+  // 3. Fetch profile từng người
   let success = 0, failed = 0, skipped = 0;
 
   for (let i = 0; i < followers.length; i++) {
-    const f = followers[i];
-    const userId = f.user_id;
+    const userId = followers[i].user_id;
 
-    // Kiểm tra đã có trong cache chưa
+    // Bỏ qua nếu đã có tên trong cache
     const cached = await redis('GET', `anhai_profile:${userId}`);
     if (cached) {
-      const p = JSON.parse(cached);
-      if (p.display_name && p.display_name !== userId) {
-        skipped++;
-        if (skipped <= 3 || skipped % 50 === 0) process.stdout.write(`⏭ `);
-        continue;
-      }
+      try {
+        const p = JSON.parse(cached);
+        if (p.display_name && p.display_name !== userId) {
+          skipped++;
+          if ((i + 1) % 50 === 0) {
+            console.log(`[${i+1}/${followers.length}] ✅${success} ❌${failed} ⏭${skipped}`);
+          }
+          continue;
+        }
+      } catch {}
     }
 
     try {
       const data = encodeURIComponent(JSON.stringify({ user_id: userId }));
       const result = await httpGet(
         `https://openapi.zalo.me/v2.0/oa/getprofile?data=${data}`,
-        { access_token: ZALO_TOKEN }
+        { access_token: zaloToken }
       );
 
       if (result?.error === 0 && result?.data?.display_name) {
-        const name = result.data.display_name;
-        const avatar = result.data.avatar || '';
-        const value = JSON.stringify({ display_name: name, avatar });
-        await redis('SET', `anhai_profile:${userId}`, value, 'EX', 60 * 60 * 24 * 90);
+        const value = JSON.stringify({
+          display_name: result.data.display_name,
+          avatar: result.data.avatar || '',
+        });
+        await redis('SET', `anhai_profile:${userId}`, value, 'EX', 7776000);
         success++;
-        process.stdout.write(`✅ `);
+        process.stdout.write('✓');
       } else {
         failed++;
-        process.stdout.write(`❌ `);
+        process.stdout.write('·');
       }
-    } catch (err) {
+    } catch {
       failed++;
-      process.stdout.write(`⚠ `);
+      process.stdout.write('!');
     }
 
-    if ((i + 1) % 20 === 0) {
-      console.log(`\n[${i + 1}/${followers.length}] ✅${success} ❌${failed} ⏭${skipped}`);
+    if ((i + 1) % 50 === 0) {
+      console.log(` [${i+1}/${followers.length}] ✅${success} ❌${failed} ⏭${skipped}`);
     }
 
-    await delay(300); // 300ms giữa mỗi request
+    await delay(250);
   }
 
   console.log('\n\n✅ Hoàn tất!');
   console.log(`   Lấy được tên: ${success}`);
-  console.log(`   Không có tên: ${failed}`);
+  console.log(`   Không có tên: ${failed} (user chưa chia sẻ profile)`);
   console.log(`   Đã có sẵn:   ${skipped}`);
-  console.log('\n👉 Quay lại web, bấm Đồng bộ lại để cập nhật danh sách hiển thị');
+  console.log('\n👉 Quay lại web, bấm Đồng bộ lại để cập nhật danh sách');
 }
 
 main().catch(console.error);
