@@ -646,16 +646,31 @@ function FollowersTab() {
       const cats = catsData?.categories || []
       const existingIds = new Set((groupsData?.groups || []).map(g => g.group_id))
       const toAdd = cats.filter(c => c.zaloGroupId && !existingIds.has(c.zaloGroupId))
-      if (!toAdd.length) throw new Error('Tất cả nhóm danh mục đã được thêm rồi')
+      if (!toAdd.length) return 0
       await Promise.all(toAdd.map(c => api.post('/api/broadcast/groups', { group_id: c.zaloGroupId, name: c.name })))
       return toAdd.length
     },
     onSuccess: (count) => {
-      qc.invalidateQueries({ queryKey: ['broadcast-groups'] })
-      toast.success(`Đã nhập ${count} nhóm từ danh mục`)
+      if (count > 0) {
+        qc.invalidateQueries({ queryKey: ['broadcast-groups'] })
+        toast.success(`Đã tự động thêm ${count} nhóm từ danh mục`)
+      }
     },
-    onError: (e) => toast.error(e.message || 'Lỗi nhập nhóm'),
+    onError: () => {},
   })
+
+  // Tự động import nhóm từ danh mục khi groups rỗng
+  useEffect(() => {
+    if (
+      !gLoading &&
+      !importCatsMut.isPending &&
+      groupsData &&
+      (groupsData.groups || []).length === 0 &&
+      catsData?.categories?.length > 0
+    ) {
+      importCatsMut.mutate()
+    }
+  }, [gLoading, groupsData, catsData])
 
   const followers = followersData?.followers || []
   const groups = groupsData?.groups || []
