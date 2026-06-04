@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2, Eye, EyeOff, Users } from 'lucide-react'
+import { ArrowLeft, Loader2, Eye, EyeOff, Users, RefreshCw } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,6 +64,17 @@ export default function UserFormPage() {
 
   const isMembersLoading = memberQueries.some((q) => q.isLoading)
   const hasMembersCache = allMembers.length > 0
+
+  const syncMutation = useMutation({
+    mutationFn: async (catIds) => {
+      await Promise.all(catIds.map((id) => api.post(`/api/zalo-members/sync/${id}`)))
+    },
+    onSuccess: () => {
+      toast.success('Đồng bộ xong — chọn thành viên bên dưới')
+      form.categoryIds.forEach((id) => queryClient.invalidateQueries({ queryKey: ['zalo-members', id] }))
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi đồng bộ'),
+  })
 
   useEffect(() => {
     if (userData?.user) {
@@ -235,8 +246,19 @@ export default function UserFormPage() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-700 mb-2">
-                    Chưa có dữ liệu thành viên cho nhóm này. Bấm <strong>Sync</strong> bên cạnh loại để tải về, hoặc nhập ID thủ công bên dưới.
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-700 mb-2 flex items-center justify-between gap-2">
+                    <span>Chưa có dữ liệu thành viên. Bấm đồng bộ để tải từ Zalo về.</span>
+                    <button
+                      type="button"
+                      onClick={() => syncMutation.mutate(form.categoryIds)}
+                      disabled={syncMutation.isPending}
+                      className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-md bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                    >
+                      {syncMutation.isPending
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <RefreshCw className="h-3 w-3" />}
+                      Đồng bộ
+                    </button>
                   </div>
                   <Input
                     placeholder="Nhập Zalo User ID thủ công (vd: 123456789)"

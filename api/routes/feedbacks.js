@@ -4,6 +4,7 @@ const AdminUser = require('../../src/models/AdminUser')
 const Category = require('../../src/models/Category')
 const requireRole = require('../middleware/requireRole')
 const { sendZaloText, sendZaloToGroup } = require('../../src/utils/zaloApi')
+const { getProfiles } = require('../../src/admin/profileCache')
 
 const LEADER_ROLES = ['superadmin', 'dept_leader']
 
@@ -42,6 +43,18 @@ router.get('/', async (req, res) => {
         .lean(),
       Feedback.countDocuments(filter),
     ])
+
+    // Enrich displayName từ Redis profile cache cho những feedback chưa có tên
+    const missing = feedbacks.filter((f) => !f.displayName && f.userId).map((f) => f.userId)
+    if (missing.length) {
+      const profiles = await getProfiles(missing)
+      feedbacks.forEach((f) => {
+        if (!f.displayName && f.userId && profiles[f.userId]?.display_name) {
+          f.displayName = profiles[f.userId].display_name
+        }
+      })
+    }
+
     res.json({ feedbacks, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } })
   } catch (err) {
     res.status(500).json({ error: err.message })

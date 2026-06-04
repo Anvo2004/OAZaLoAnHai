@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,6 +38,15 @@ function CategoryMemberPanel({ cat }) {
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi xóa'),
   })
 
+  const syncMutation = useMutation({
+    mutationFn: () => api.post(`/api/zalo-members/sync/${cat._id}`).then((r) => r.data),
+    onSuccess: (data) => {
+      toast.success(`Đồng bộ xong — ${data.synced} thành viên`)
+      queryClient.invalidateQueries({ queryKey: ['zalo-members', cat._id] })
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi đồng bộ'),
+  })
+
   const members = data?.members ?? []
 
   return (
@@ -60,6 +69,17 @@ function CategoryMemberPanel({ cat }) {
                 {members.length} thành viên
               </span>
             )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); syncMutation.mutate() }}
+              disabled={syncMutation.isPending}
+              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
+            >
+              {syncMutation.isPending
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <RefreshCw className="h-3 w-3" />}
+              Đồng bộ
+            </button>
             {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
           </div>
         </button>

@@ -2,6 +2,7 @@ const router = require('express').Router()
 const Category = require('../../src/models/Category')
 const ZaloGroupMember = require('../../src/models/ZaloGroupMember')
 const requireRole = require('../middleware/requireRole')
+const { getZaloGroupMembers } = require('../../src/utils/zaloApi')
 
 // GET /:categoryId — danh sách members của nhóm
 router.get('/:categoryId', async (req, res) => {
@@ -38,6 +39,43 @@ router.post('/manual/:categoryId', requireRole('superadmin'), async (req, res) =
       { upsert: true, new: true }
     )
     res.status(201).json({ ok: true, member })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /sync/:categoryId — đồng bộ thành viên từ Zalo API (superadmin)
+router.post('/sync/:categoryId', requireRole('superadmin'), async (req, res) => {
+  try {
+    const cat = await Category.findById(req.params.categoryId).lean()
+    if (!cat) return res.status(404).json({ error: 'Không tìm thấy danh mục' })
+    if (!cat.zaloGroupId) return res.status(400).json({ error: 'Danh mục chưa có Group ID' })
+
+    const { members, raw } = await getZaloGroupMembers(cat.zaloGroupId)
+    if (!members.length) {
+      return res.json({ synced: 0, message: 'Không lấy được thành viên từ Zalo', raw })
+    }
+
+    let synced = 0
+    for (const m of members) {
+      const userId = m.user_id || m.id
+      if (!userId) continue
+      await ZaloGroupMember.findOneAndUpdate(
+        { zaloUserId: String(userId), categoryId: cat._id },
+        {
+          zaloUserId: String(userId),
+          displayName: m.display_name || m.name || '',
+          avatar: m.avatar || '',
+          categoryId: cat._id,
+          groupId: cat.zaloGroupId,
+          syncedAt: new Date(),
+        },
+        { upsert: true }
+      )
+      synced++
+    }
+
+    res.json({ synced, total: members.length })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
