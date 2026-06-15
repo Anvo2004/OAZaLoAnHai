@@ -12,35 +12,54 @@ async function redisCmd(...args) {
   } catch { return null; }
 }
 
-// Lưu profile user vào Redis (key: anhai_profile:{userId})
+// Lưu profile user vào Redis (key: anhai_profile:{userId}), TTL 90 ngày
 async function saveProfile(userId, displayName, avatar = '') {
   if (!userId || !displayName || displayName === userId) return;
   const key = `anhai_profile:${userId}`;
   const value = JSON.stringify({ display_name: displayName, avatar: avatar || '' });
-  await redisCmd('SET', key, value, 'EX', 60 * 60 * 24 * 90); // TTL 90 ngày
+  await redisCmd('SET', key, value, 'EX', 60 * 60 * 24 * 90);
 }
 
-// Lấy profile của nhiều userId cùng lúc từ Redis
+// Lấy profile của nhiều userId từ Redis; fallback gọi Zalo API nếu cache miss
 async function getProfiles(userIds) {
   if (!userIds?.length) return {};
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return {};
 
   const result = {};
-  try {
-    // MGET để lấy tất cả cùng lúc
-    const keys = userIds.map(id => `anhai_profile:${id}`);
-    const res = await axios.post(url, ['MGET', ...keys], {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    });
-    const values = res.data.result || [];
-    userIds.forEach((id, i) => {
-      if (values[i]) {
-        try { result[id] = JSON.parse(values[i]); } catch {}
-      }
-    });
-  } catch {}
+
+  // Bước 1: đọc từ Redis bằng MGET
+  if (url && token) {
+    try {
+      const keys = userIds.map(id => `anhai_profile:${id}`);
+      const res = await axios.post(url, ['MGET', ...keys], {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const values = res.data.result || [];
+      userIds.forEach((id, i) => {
+        if (values[i]) {
+          try { result[id] = JSON.parse(values[i]); } catch {}
+        }
+      });
+    } catch {}
+  }
+
+  // Bước 2: fallback gọi Zalo API cho các userId chưa có trong cache
+  const missingIds = userIds.filter(id => !result[id]);
+  if (missingIds.length) {
+    // Lazy require tránh circular dependency khi module load
+    const { getZaloUserProfile } = require('../utils/zaloApi');
+    await Promise.all(missingIds.map(async (id) => {
+      try {
+        const profile = await getZaloUserProfile(id);
+        if (profile?.display_name) {
+          await saveProfile(id, profile.display_name, profile.avatar || '');
+          result[id] = { display_name: profile.display_name, avatar: profile.avatar || '' };
+        }
+      } catch {}
+    }));
+  }
+
   return result;
 }
 

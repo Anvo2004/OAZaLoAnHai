@@ -1,5 +1,6 @@
 const { sendZaloText, sendZaloButtons, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
+const { saveProfile } = require('../admin/profileCache');
 const Feedback = require('../models/Feedback');
 const Category = require('../models/Category');
 
@@ -47,6 +48,7 @@ async function startFeedback(userId, displayName = '') {
   if (!name) {
     const profile = await getZaloUserProfile(userId);
     name = profile?.display_name || '';
+    if (profile?.display_name) saveProfile(userId, profile.display_name, profile.avatar || '').catch(() => {});
     console.log(`[startFeedback] userId=${userId} profile=${JSON.stringify(profile)} → name="${name}"`);
   }
   setState(userId, { step: 'waiting_contact', displayName: name });
@@ -329,6 +331,7 @@ async function saveFeedback(userId, state) {
     if (!displayName) {
       const profile = await getZaloUserProfile(userId);
       displayName = profile?.display_name || '';
+      if (profile?.display_name) saveProfile(userId, profile.display_name, profile.avatar || '').catch(() => {});
       console.log(`[saveFeedback] getZaloUserProfile userId=${userId} → profile=${JSON.stringify(profile)} displayName="${displayName}"`);
     }
 
