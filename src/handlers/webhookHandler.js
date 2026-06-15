@@ -7,6 +7,7 @@ const {
   isFeedbackTrigger,
 } = require('../services/feedbackService');
 const { saveProfile } = require('../admin/profileCache');
+const { syncFollowers } = require('../admin/followerService');
 
 async function handleWebhook(body) {
   const eventName = body.event_name;
@@ -20,6 +21,12 @@ async function handleWebhook(body) {
   const avatar = body.sender?.avatar || body.follower?.avatar || '';
   if (displayName) {
     saveProfile(userId, displayName, avatar).catch(() => {});
+  }
+
+  // Cập nhật thông tin user (đổi tên, avatar)
+  if (eventName === 'update_user_info') {
+    syncFollowers().catch(err => console.error('[Follower] sync lỗi:', err.message));
+    return;
   }
 
   // Chào mừng khi follow OA
