@@ -35,10 +35,12 @@ cd Backend
 # Tạo .env (copy giá trị thật từ host cũ, không tạo mới)
 npm install --omit=dev
 cd ..
-pm2 start Backend/server.js --name <app>-backend --cwd Backend
+pm2 start server.js --name <app>-backend --cwd /var/www/<app>/Backend
 pm2 save
 curl http://localhost:<port>/health   # sanity check
 ```
+
+⚠️ **Gotcha `--cwd`**: PM2 resolve script path **tương đối với `--cwd`**, không phải với thư mục hiện tại của shell. `pm2 start Backend/server.js --cwd Backend` sẽ tìm sai ở `Backend/Backend/server.js`. Luôn dùng: script path tương đối với cwd (`server.js`), `--cwd` là đường dẫn tuyệt đối tới `Backend/`.
 
 ## 4. DNS + Nginx + SSL
 
@@ -96,16 +98,21 @@ jobs:
           key: ${{ secrets.VPS_PRIVATE_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
+            set -e
             cd ${{ secrets.VPS_APP_DIR }}
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             cd Backend && npm install --omit=dev && cd ..
             cd Frontend/Web && npm install && npm run build && cd ../..
             pm2 delete <app>-backend 2>/dev/null || true
-            pm2 start Backend/server.js --name <app>-backend --cwd Backend
+            pm2 start server.js --name <app>-backend --cwd ${{ secrets.VPS_APP_DIR }}/Backend
+            pm2 save
             echo "✅ Deploy xong: $(date)"
 ```
 
-(Nếu repo không có frontend build trong cùng pipeline, hoặc không theo cấu trúc Backend/Frontend, bỏ 2 dòng `cd Frontend/Web...` và đổi path `Backend/server.js` lại thành `server.js` ở root.)
+(Nếu repo không có frontend build trong cùng pipeline, hoặc không theo cấu trúc Backend/Frontend, bỏ 2 dòng `cd Frontend/Web...` và đổi `--cwd .../Backend` lại thành `--cwd ${{ secrets.VPS_APP_DIR }}`.)
+
+⚠️ **`set -e` + `git reset --hard`**: bắt buộc cho pipeline tự động. Không có `set -e`, 1 lệnh lỗi giữa chừng (ví dụ `git pull` bị conflict do có local change chưa commit — thường do build trước đó vô tình sửa `package-lock.json`) sẽ không dừng script, các lệnh sau vẫn chạy trên code CŨ mà không ai biết — gây outage âm thầm. `git reset --hard origin/main` đảm bảo VPS luôn khớp y nguyên origin/main, không bao giờ bị kẹt bởi local diff (file `.env`/`node_modules` không bị ảnh hưởng vì không nằm trong git).
 
 ⚠️ **Gotcha PM2**: `pm2 restart <app>` KHÔNG đổi lại script path/cwd nếu vị trí file gốc đã thay đổi (ví dụ sau khi tái cấu trúc thư mục) — nó chỉ restart đúng config cũ. Phải `pm2 delete` rồi `pm2 start` lại với path/`--cwd` mới, như trên.
 
