@@ -25,6 +25,7 @@ export default function FeedbackDetailPage() {
   const [note, setNote] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
   const [rejectReason, setRejectReason] = useState('')
+  const [notifyAdmin, setNotifyAdmin] = useState(false)
 
   const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
   const isOfficer = user?.role === 'officer' || user?.role === 'staff'
@@ -68,7 +69,7 @@ export default function FeedbackDetailPage() {
   })
 
   const approveMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`, { finalResponse: draftText }).then((r) => r.data),
+    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`, { finalResponse: draftText, notifyAdmin }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã duyệt và gửi phản hồi cho dân qua Zalo'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi duyệt'),
   })
@@ -312,6 +313,17 @@ export default function FeedbackDetailPage() {
                     <p className="text-[11px] text-amber-600 mt-1">✏️ Đã chỉnh sửa so với bản gốc của cán bộ</p>
                   )}
                 </div>
+                {user?.role === 'dept_leader' && (
+                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifyAdmin}
+                      onChange={(e) => setNotifyAdmin(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Gửi chi tiết xử lý cho admin qua Zalo
+                  </label>
+                )}
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {

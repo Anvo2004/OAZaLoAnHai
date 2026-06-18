@@ -81,6 +81,8 @@ mongoose.connect(CONFIG.MONGO_URI)
       await Category.insertMany(defaultCategories);
       console.log('[Seed] Đã tạo 4 danh mục phản ánh mặc định');
     }
+
+    require('./src/services/groupSyncService').startGroupSyncSchedule();
   })
   .catch(err => console.error('[MongoDB] Lỗi kết nối:', err.message));
 

@@ -216,6 +216,7 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
 
     // Lãnh đạo có thể sửa nội dung trước khi gửi; nếu không sửa thì dùng bản dự thảo gốc
     const finalResponse = req.body.finalResponse?.trim() || feedback.draftResponse.trim()
+    const notifyAdmin = !!req.body.notifyAdmin
 
     // Gửi tin cho dân qua Zalo OA
     await sendZaloText(feedback.userId, finalResponse)
@@ -241,6 +242,21 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
       `🆔 Mã: #${shortCode}\n` +
       `🏷️ Loại: ${feedback.categoryId?.name || ''}`
     await sendZaloToGroup(msg, groupId)
+
+    // Lãnh đạo tuỳ chọn gửi chi tiết xử lý cho superadmin
+    if (notifyAdmin) {
+      const approver = await AdminUser.findById(req.user.id).lean()
+      const admins = await AdminUser.find({ role: 'superadmin', zaloUserId: { $ne: '' } }).lean()
+      const detailMsg =
+        `📋 CHI TIẾT XỬ LÝ PHẢN ÁNH #${shortCode}\n` +
+        `${'─'.repeat(28)}\n` +
+        `🏷️ Loại: ${feedback.categoryId?.name || ''}\n` +
+        `👤 Người dân: ${feedback.displayName || feedback.contact}\n` +
+        `📝 Nội dung phản ánh: ${feedback.content}\n` +
+        `✅ Phản hồi đã gửi: ${finalResponse}\n` +
+        `👮 Duyệt bởi: ${approver?.fullName || ''}`
+      await Promise.all(admins.map((a) => sendZaloText(a.zaloUserId, detailMsg)))
+    }
 
     res.json({ ok: true })
   } catch (err) {
