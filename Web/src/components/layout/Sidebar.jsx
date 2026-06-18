@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, Building2, Send } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Users, LogOut, Settings, Send } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -16,17 +16,17 @@ function NavItem({ to, icon: Icon, label }) {
       to={to}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group',
+          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-out group',
           isActive
-            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-900/30'
-            : 'text-slate-400 hover:bg-white/8 hover:text-white'
+            ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white glow-jade'
+            : 'text-slate-400 hover:bg-white/8 hover:text-white hover:translate-x-0.5'
         )
       }
     >
       {({ isActive }) => (
         <>
           <span className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-lg transition-all',
+            'flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-300',
             isActive ? 'bg-white/20' : 'bg-white/5 group-hover:bg-white/10'
           )}>
             <Icon className="h-4 w-4 shrink-0" />
@@ -42,22 +42,21 @@ export default function Sidebar() {
   const { user, logout } = useAuth()
 
   return (
-    <aside
-      className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col"
-      style={{ background: 'linear-gradient(180deg, #0d1b2a 0%, #0f2336 60%, #112840 100%)' }}
-    >
+    <aside className="bg-mesh-jade fixed inset-y-0 left-0 z-50 flex w-64 flex-col">
       {/* Decorative circles */}
-      <div className="pointer-events-none absolute -top-12 -left-12 h-40 w-40 rounded-full bg-blue-600/10" />
-      <div className="pointer-events-none absolute top-32 -right-8 h-24 w-24 rounded-full bg-cyan-500/5" />
+      <div className="pointer-events-none absolute -top-12 -left-12 h-40 w-40 rounded-full bg-emerald-500/10" />
+      <div className="pointer-events-none absolute top-32 -right-8 h-24 w-24 rounded-full bg-amber-400/5" />
 
       {/* Brand */}
       <div className="relative flex items-center gap-3 px-5 py-5 border-b border-white/8">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-800/40">
-          <Building2 className="h-5 w-5 text-white" />
-        </div>
+        <img
+          src="/images/LogoAnHai.jpg"
+          alt="Logo An Hải"
+          className="h-10 w-10 shrink-0 rounded-full shadow-lg glow-jade object-cover"
+        />
         <div className="min-w-0">
           <p className="text-white text-sm font-bold leading-tight truncate">UBND Phường An Hải</p>
-          <p className="text-blue-400/70 text-[11px] mt-0.5">Cổng quản lý góp ý</p>
+          <p className="text-emerald-300/70 text-[11px] mt-0.5">Cổng quản lý góp ý</p>
         </div>
       </div>
 
@@ -91,7 +90,7 @@ export default function Sidebar() {
       {/* User footer */}
       <div className="relative px-3 pb-4">
         <div className="flex items-center gap-3 rounded-2xl bg-white/6 border border-white/8 px-3 py-3 backdrop-blur">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white text-sm font-bold shadow-md shadow-blue-900/40">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white text-sm font-bold glow-jade">
             {user?.fullName?.[0]?.toUpperCase() ?? 'A'}
           </div>
           <div className="flex-1 min-w-0">

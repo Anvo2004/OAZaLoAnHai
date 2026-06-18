@@ -4,32 +4,36 @@
 
 @layer base {
   :root {
-    --background: 210 25% 97%;
-    --foreground: 222 47% 11%;
+    --background: 160 30% 97%;
+    --foreground: 162 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 162 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 50%;
+    --popover-foreground: 162 47% 11%;
+    --primary: 160 84% 33%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --secondary: 160 30% 95%;
+    --secondary-foreground: 162 47% 11%;
+    --muted: 160 25% 95%;
+    --muted-foreground: 160 12% 45%;
+    --accent: 160 30% 95%;
+    --accent-foreground: 162 47% 11%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 50%;
+    --border: 160 20% 89%;
+    --input: 160 20% 89%;
+    --ring: 160 84% 33%;
     --radius: 0.75rem;
   }
 }
 
 @layer base {
   * { @apply border-border; }
-  body { @apply bg-background text-foreground font-sans antialiased; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
 }
 
 /* Custom scrollbar */
@@ -66,12 +70,12 @@
 }
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 30px rgba(5, 150, 105, 0.14);
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  background: linear-gradient(135deg, #059669, #34d399);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -82,4 +86,31 @@
   background: rgba(255,255,255,0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+/* Soft jade mesh background — dùng cho panel/hero cần nền mịn hơn nền phẳng */
+.bg-mesh-jade {
+  background-color: #062e1f;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(16, 185, 129, 0.25), transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(245, 158, 11, 0.12), transparent 40%),
+    radial-gradient(circle at 75% 85%, rgba(13, 148, 136, 0.25), transparent 50%),
+    linear-gradient(160deg, #062e1f 0%, #0b4630 55%, #0a3b28 100%);
+}
+
+/* Glow phát sáng nhẹ — dùng cho nút/active state cần nổi bật sang trọng hơn */
+.glow-jade {
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35), 0 0 0 1px rgba(16, 185, 129, 0.08);
+}
+.glow-jade-hover {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.glow-jade-hover:hover {
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.45), 0 0 0 1px rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Glow vàng kim — điểm nhấn theo màu rồng trong logo */
+.glow-gold {
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
 }

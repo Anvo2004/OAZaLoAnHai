@@ -68,9 +68,9 @@ module.exports = {
         'pulse-soft':     'pulse-soft 2s ease-in-out infinite',
       },
       backgroundImage: {
-        'sidebar': 'linear-gradient(180deg, #0d1b2a 0%, #0f2336 60%, #112840 100%)',
-        'header':  'linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #0ea5e9 100%)',
-        'hero-card': 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0ea5e9 100%)',
+        'sidebar': 'linear-gradient(180deg, #062e1f 0%, #0b4630 60%, #0a3b28 100%)',
+        'header':  'linear-gradient(135deg, #047857 0%, #059669 40%, #10b981 100%)',
+        'hero-card': 'linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%)',
       },
     },
   },

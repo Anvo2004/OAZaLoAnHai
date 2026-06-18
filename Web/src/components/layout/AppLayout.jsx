@@ -26,7 +26,7 @@ export default function AppLayout() {
   const page = PAGE_TITLES[basePath] ?? { title: 'Trang', subtitle: '' }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-emerald-50/50 overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -41,19 +41,19 @@ export default function AppLayout() {
       <div className="ml-64 flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Gradient header */}
         <header className="relative shrink-0 overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #0ea5e9 100%)' }}>
+          style={{ background: 'linear-gradient(135deg, #047857 0%, #059669 40%, #10b981 100%)' }}>
           {/* Decorative blobs */}
           <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/5" />
-          <div className="pointer-events-none absolute bottom-0 right-32 h-32 w-32 rounded-full bg-cyan-400/10" />
-          <div className="pointer-events-none absolute -bottom-6 left-1/3 h-20 w-20 rounded-full bg-blue-300/10" />
+          <div className="pointer-events-none absolute bottom-0 right-32 h-32 w-32 rounded-full bg-amber-300/10" />
+          <div className="pointer-events-none absolute -bottom-6 left-1/3 h-20 w-20 rounded-full bg-teal-200/10" />
 
           <div className="relative px-6 py-4 flex items-center justify-between gap-4">
             {/* Left: greeting + page title */}
             <div className="min-w-0">
               <h1 className="text-white font-bold text-lg leading-tight">
-                {getHourGreeting()}, <span className="text-blue-100">{user?.fullName?.split(' ').pop() ?? 'Admin'}</span>!
+                {getHourGreeting()}, <span className="text-emerald-100">{user?.fullName?.split(' ').pop() ?? 'Admin'}</span>!
               </h1>
-              <p className="text-blue-200/80 text-xs mt-0.5 truncate">{page.subtitle}</p>
+              <p className="text-emerald-100/80 text-xs mt-0.5 truncate">{page.subtitle}</p>
             </div>
 
             {/* Right: search + notifications + user */}
@@ -64,14 +64,14 @@ export default function AppLayout() {
                 <input
                   type="text"
                   placeholder="Tìm kiếm..."
-                  className="h-9 w-48 rounded-xl bg-white/15 border border-white/20 pl-9 pr-4 text-sm text-white placeholder-white/50 focus:outline-none focus:bg-white/22 focus:border-white/40 focus:w-56 transition-all duration-200"
+                  className="h-9 w-48 rounded-xl bg-white/15 border border-white/20 pl-9 pr-4 text-sm text-white placeholder-white/50 focus:outline-none focus:bg-white/22 focus:border-white/40 focus:w-56 transition-all duration-300"
                 />
               </div>
 
               {/* Bell */}
               <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 border border-white/20 hover:bg-white/25 transition-all">
                 <Bell className="h-4 w-4 text-white" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-400 ring-1 ring-blue-600" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-400 ring-1 ring-emerald-700" />
               </button>
 
               {/* User chip */}
@@ -81,7 +81,7 @@ export default function AppLayout() {
                 </div>
                 <div className="hidden sm:block leading-tight">
                   <p className="text-white text-xs font-semibold">{user?.fullName}</p>
-                  <p className="text-blue-200/70 text-[10px]">
+                  <p className="text-emerald-100/70 text-[10px]">
                     {user?.role === 'superadmin' ? 'Quản trị viên' : 'Nhân viên'}
                   </p>
                 </div>
