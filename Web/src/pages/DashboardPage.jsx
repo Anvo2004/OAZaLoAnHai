@@ -31,7 +31,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     return (
       <div className="rounded-xl bg-white shadow-lg border border-slate-100 px-4 py-3 text-sm">
         <p className="font-semibold text-slate-700">{label}</p>
-        <p className="text-blue-600 font-bold mt-0.5">{payload[0].value} góp ý</p>
+        <p className="text-emerald-600 font-bold mt-0.5">{payload[0].value} góp ý</p>
       </div>
     )
   }
@@ -48,7 +48,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
         <p className="text-sm text-slate-400">Đang tải dữ liệu...</p>
       </div>
     )
@@ -73,17 +73,17 @@ export default function DashboardPage() {
       {/* Hero banner card */}
       <div
         className="relative overflow-hidden rounded-2xl text-white p-6 shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0ea5e9 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%)' }}
       >
         <div className="pointer-events-none absolute -top-8 -right-8 h-40 w-40 rounded-full bg-white/8" />
         <div className="pointer-events-none absolute -bottom-10 right-24 h-32 w-32 rounded-full bg-white/5" />
-        <div className="pointer-events-none absolute top-4 right-1/3 h-16 w-16 rounded-full bg-cyan-300/10" />
+        <div className="pointer-events-none absolute top-4 right-1/3 h-16 w-16 rounded-full bg-amber-300/10" />
 
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-blue-200 text-sm font-medium mb-1">Tổng góp ý & phản ánh</p>
+            <p className="text-emerald-100 text-sm font-medium mb-1">Tổng góp ý & phản ánh</p>
             <p className="text-5xl font-extrabold tracking-tight">{data.stats?.total ?? 0}</p>
-            <p className="text-blue-200/70 text-xs mt-1">Từ người dân UBND Phường An Hải</p>
+            <p className="text-emerald-100/70 text-xs mt-1">Từ người dân UBND Phường An Hải</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 border border-white/20 px-3 py-1.5 text-sm">
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               Chờ xử lý: <b>{data.stats?.pending ?? 0}</b>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 border border-white/20 px-3 py-1.5 text-sm">
-              <Cog className="h-3.5 w-3.5 text-cyan-300" />
+              <Cog className="h-3.5 w-3.5 text-teal-200" />
               Đang xử lý: <b>{data.stats?.processing ?? 0}</b>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 border border-white/20 px-3 py-1.5 text-sm">
@@ -108,9 +108,9 @@ export default function DashboardPage() {
           label="Tổng cộng"
           value={data.stats?.total}
           icon={Inbox}
-          colorClass="text-blue-600"
-          bgClass="bg-blue-500"
-          iconBg="bg-blue-50"
+          colorClass="text-slate-700"
+          bgClass="bg-slate-500"
+          iconBg="bg-slate-100"
         />
         <StatCard
           label="Chờ xử lý"
@@ -147,16 +147,16 @@ export default function DashboardPage() {
               <h3 className="font-bold text-slate-800 text-base">Góp ý 7 ngày qua</h3>
               <p className="text-xs text-slate-400 mt-0.5">Thống kê số lượng theo ngày</p>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-              <TrendingUp className="h-4.5 w-4.5 text-blue-600" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
+              <TrendingUp className="h-4.5 w-4.5 text-emerald-600" />
             </div>
           </div>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.8} />
+                  <stop offset="0%" stopColor="#059669" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#34d399" stopOpacity={0.8} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                 tickLine={false}
                 allowDecimals={false}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#eff6ff', radius: 6 }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ecfdf5', radius: 6 }} />
               <Bar dataKey="count" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
@@ -182,14 +182,14 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 card-hover rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
-                <MessageSquarePlus className="h-3.5 w-3.5 text-blue-600" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+                <MessageSquarePlus className="h-3.5 w-3.5 text-emerald-600" />
               </div>
               <h3 className="font-bold text-slate-800 text-sm">Góp ý mới nhất</h3>
             </div>
             <Link
               to="/feedbacks"
-              className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-semibold transition-colors"
+              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 font-semibold transition-colors"
             >
               Xem tất cả <ArrowRight className="h-3 w-3" />
             </Link>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
                   <Link
                     key={fb._id}
                     to={`/feedbacks/${fb._id}`}
-                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-blue-50/60 transition-colors group"
+                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-emerald-50/60 transition-colors duration-300 group"
                   >
                     {fb.avatar ? (
                       <img
@@ -220,13 +220,13 @@ export default function DashboardPage() {
                       />
                     ) : null}
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white text-xs font-bold shadow-sm shadow-blue-200"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white text-xs font-bold shadow-sm shadow-emerald-200"
                       style={{ display: fb.avatar ? 'none' : 'flex' }}
                     >
                       {initial}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate text-slate-700 group-hover:text-blue-600 transition-colors">
+                      <p className="text-sm font-semibold truncate text-slate-700 group-hover:text-emerald-600 transition-colors">
                         {fb.displayName || '(Ẩn danh)'}
                       </p>
                       <p className="text-[11px] text-slate-400 font-mono">{fb.contact}</p>

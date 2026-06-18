@@ -198,11 +198,11 @@ export default function UserFormPage() {
                   {categories.map((cat) => {
                     const isChecked = form.categoryIds.includes(cat._id)
                     return (
-                      <div key={cat._id} className={`flex items-center justify-between px-3 py-2.5 transition-colors ${isChecked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <div key={cat._id} className={`flex items-center justify-between px-3 py-2.5 transition-colors ${isChecked ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                         <label className="flex items-center gap-2.5 cursor-pointer flex-1">
                           <input
                             type="checkbox"
-                            className="rounded accent-blue-600"
+                            className="rounded accent-emerald-600"
                             checked={isChecked}
                             onChange={() => toggleCategory(cat._id)}
                           />
@@ -218,7 +218,7 @@ export default function UserFormPage() {
             {/* Zalo User ID — dropdown từ members khi đã chọn loại */}
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-blue-500" />
+                <Users className="h-3.5 w-3.5 text-emerald-500" />
                 Tài khoản Zalo trong nhóm
               </Label>
 

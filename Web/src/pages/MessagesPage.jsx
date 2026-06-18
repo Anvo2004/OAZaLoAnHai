@@ -63,7 +63,7 @@ function FollowerAvatar({ f, size = 8 }) {
     )
   }
   return (
-    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
       {initial}
     </div>
   )
@@ -85,7 +85,7 @@ function TabBar({ active, onChange }) {
           className={cn(
             'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all',
             active === id
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-white text-emerald-600 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           )}
         >
@@ -111,7 +111,7 @@ function AttachTypeTabs({ active, onChange }) {
           onClick={() => onChange(id)}
           className={cn(
             'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-            active === id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            active === id ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           )}
         >
           <Icon className="h-3.5 w-3.5" /> {label}
@@ -292,7 +292,7 @@ function SendTab({ followers, groups, syncedAt }) {
             {attachType === 'image' && (
               <div className="space-y-2">
                 <label
-                  className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
+                  className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-300"
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => { e.preventDefault(); handleImageFiles(e.dataTransfer.files) }}
                 >
@@ -325,7 +325,7 @@ function SendTab({ followers, groups, syncedAt }) {
                   ⚠️ Video chỉ gửi được vào <strong>nhóm</strong> — user cá nhân sẽ nhận link text.
                 </div>
                 {!videoInfo ? (
-                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-300">
                     <Video className="h-6 w-6 text-slate-300" />
                     <span className="text-sm text-slate-400">Chọn video MP4/MOV · tối đa 100MB</span>
                     <input type="file" accept="video/mp4,video/quicktime" className="hidden"
@@ -333,7 +333,7 @@ function SendTab({ followers, groups, syncedAt }) {
                   </label>
                 ) : (
                   <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <Video className="h-5 w-5 text-blue-500 shrink-0" />
+                    <Video className="h-5 w-5 text-emerald-500 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{videoInfo.file.name}</p>
                       <p className="text-xs text-slate-400">{fmtBytes(videoInfo.file.size)}</p>
@@ -350,7 +350,7 @@ function SendTab({ followers, groups, syncedAt }) {
             {attachType === 'file' && (
               <div className="space-y-2">
                 {!fileInfo ? (
-                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-300">
                     <FileText className="h-6 w-6 text-slate-300" />
                     <span className="text-sm text-slate-400">Chọn file .docx .pdf .xlsx · tối đa 20MB</span>
                     <input type="file" accept=".docx,.pdf,.xlsx,.xls" className="hidden"
@@ -358,7 +358,7 @@ function SendTab({ followers, groups, syncedAt }) {
                   </label>
                 ) : (
                   <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <FileText className="h-5 w-5 text-blue-500 shrink-0" />
+                    <FileText className="h-5 w-5 text-emerald-500 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{fileInfo.filename}</p>
                       <p className="text-xs text-slate-400">{fmtBytes(fileInfo.file.size)}</p>
@@ -391,7 +391,7 @@ function SendTab({ followers, groups, syncedAt }) {
               className="resize-none text-sm"
             />
             {linkMatch && (
-              <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
                 <span className="shrink-0">🔗 Phát hiện link:</span>
                 <span className="truncate font-mono">{linkMatch}</span>
               </div>
@@ -416,7 +416,7 @@ function SendTab({ followers, groups, syncedAt }) {
             <div className="relative">
               <button
                 onClick={() => setFollowerPickerOpen(v => !v)}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-blue-400 transition-all"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-emerald-400 transition-all duration-300"
               >
                 <span>Chọn từ danh sách Follower...</span>
                 {followerPickerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -427,7 +427,7 @@ function SendTab({ followers, groups, syncedAt }) {
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                       <input
-                        className="w-full rounded-lg border border-slate-200 pl-8 pr-3 py-2 text-xs outline-none focus:border-blue-400"
+                        className="w-full rounded-lg border border-slate-200 pl-8 pr-3 py-2 text-xs outline-none focus:border-emerald-400"
                         placeholder="Tìm tên hoặc ID..."
                         value={followerSearch}
                         onChange={e => setFollowerSearch(e.target.value)}
@@ -451,9 +451,9 @@ function SendTab({ followers, groups, syncedAt }) {
                             if (checked) next.delete(f.user_id); else next.add(f.user_id)
                             return next
                           })}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-blue-50 transition-colors"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-emerald-50 transition-colors"
                         >
-                          {checked ? <CheckSquare className="h-4 w-4 text-blue-500 shrink-0" /> : <Square className="h-4 w-4 text-slate-300 shrink-0" />}
+                          {checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-slate-300 shrink-0" />}
                           <FollowerAvatar f={f} size={7} />
                           <div className="min-w-0">
                             <p className={cn('text-xs font-medium truncate', !realName && 'text-slate-400 italic')}>
@@ -497,7 +497,7 @@ function SendTab({ followers, groups, syncedAt }) {
             <div className="relative">
               <button
                 onClick={() => setGroupPickerOpen(v => !v)}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-blue-400 transition-all"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-emerald-400 transition-all duration-300"
               >
                 <span>Chọn nhóm từ danh sách...</span>
                 {groupPickerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -517,7 +517,7 @@ function SendTab({ followers, groups, syncedAt }) {
                           })
                           setGroupPickerOpen(false)
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-blue-50 transition-colors"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-emerald-50 transition-colors"
                       >
                         <div>
                           <p className="text-xs font-medium">{g.name}</p>
@@ -564,7 +564,7 @@ function SendTab({ followers, groups, syncedAt }) {
             <div className="space-y-1.5">
               <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                   style={{ width: `${job.total ? ((job.sent + job.failed) / job.total) * 100 : 0}%` }}
                 />
               </div>
@@ -693,7 +693,7 @@ function FollowersTab() {
         ].map(({ id, label }) => (
           <button key={id} onClick={() => setSubTab(id)}
             className={cn('flex-1 rounded-xl py-2 text-sm font-medium transition-all',
-              subTab === id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              subTab === id ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             )}>{label}</button>
         ))}
       </div>
@@ -712,7 +712,7 @@ function FollowersTab() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <input
-                    className="rounded-xl border border-slate-200 pl-8 pr-3 py-2 text-sm outline-none focus:border-blue-400 w-48"
+                    className="rounded-xl border border-slate-200 pl-8 pr-3 py-2 text-sm outline-none focus:border-emerald-400 w-48"
                     placeholder="Tìm tên hoặc ID..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}

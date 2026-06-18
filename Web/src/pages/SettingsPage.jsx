@@ -18,7 +18,7 @@ function Avatar({ name, avatar, size = 8 }) {
     )
   }
   return (
-    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
       {initial}
     </div>
   )
@@ -98,7 +98,7 @@ function CategoryMemberPanel({ cat, followers }) {
           </CardTitle>
           <div className="flex items-center gap-2">
             {members.length > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
                 {members.length} thành viên
               </span>
             )}
@@ -124,7 +124,7 @@ function CategoryMemberPanel({ cat, followers }) {
             <button
               type="button"
               onClick={() => setShowPicker(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors w-full"
+              className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 px-3 py-2 rounded-lg border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 transition-colors duration-300 w-full"
             >
               <Plus className="h-3.5 w-3.5" /> Thêm thành viên vào nhóm này
             </button>
@@ -132,9 +132,9 @@ function CategoryMemberPanel({ cat, followers }) {
 
           {/* Follower picker */}
           {showPicker && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3 space-y-2">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-blue-700">Chọn từ danh sách follower</p>
+                <p className="text-xs font-semibold text-emerald-700">Chọn từ danh sách follower</p>
                 <button
                   type="button"
                   onClick={() => { setShowPicker(false); setSearch('') }}
@@ -152,7 +152,7 @@ function CategoryMemberPanel({ cat, followers }) {
                   placeholder="Tìm theo tên hoặc ID..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full h-8 pl-8 pr-3 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400"
+                  className="w-full h-8 pl-8 pr-3 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400"
                 />
               </div>
 
@@ -175,7 +175,7 @@ function CategoryMemberPanel({ cat, followers }) {
                         type="button"
                         onClick={() => addMutation.mutate(f)}
                         disabled={addMutation.isPending}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-blue-50 transition-colors text-left disabled:opacity-50"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-emerald-50 transition-colors text-left disabled:opacity-50"
                       >
                         <Avatar name={f.display_name} avatar={f.avatar} size={8} />
                         <div className="min-w-0 flex-1">
@@ -184,7 +184,7 @@ function CategoryMemberPanel({ cat, followers }) {
                           </p>
                           <p className="text-[11px] text-slate-400 font-mono">{f.user_id}</p>
                         </div>
-                        <Plus className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                        <Plus className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                       </button>
                     )
                   })

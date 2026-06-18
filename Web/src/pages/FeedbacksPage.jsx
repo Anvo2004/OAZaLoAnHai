@@ -19,7 +19,7 @@ function SelectField({ value, onChange, children }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all cursor-pointer"
+      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-400 transition-all duration-300 cursor-pointer"
     >
       {children}
     </select>
@@ -106,7 +106,7 @@ export default function FeedbacksPage() {
               placeholder="Tìm theo tên, liên hệ, nội dung..."
               value={filter.q}
               onChange={(e) => setF('q', e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-400 transition-all duration-300"
             />
           </div>
 
@@ -125,7 +125,7 @@ export default function FeedbacksPage() {
       <div className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-52 gap-3">
-            <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
+            <Loader2 className="h-7 w-7 animate-spin text-emerald-500" />
             <p className="text-sm text-slate-400">Đang tải...</p>
           </div>
         ) : feedbacks.length === 0 ? (
@@ -138,7 +138,7 @@ export default function FeedbacksPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)' }}>
+                <tr style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }}>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-10">#</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Người gửi</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Nội dung</th>
@@ -153,17 +153,17 @@ export default function FeedbacksPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {feedbacks.map((fb, i) => (
-                  <tr key={fb._id} className="hover:bg-blue-50/40 transition-colors group">
+                  <tr key={fb._id} className="hover:bg-emerald-50/40 transition-colors duration-300 group">
                     <td className="px-4 py-3.5 text-slate-300 text-xs font-mono">
                       {(page - 1) * 20 + i + 1}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white text-xs font-bold shadow-sm">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white text-xs font-bold shadow-sm">
                           {(fb.displayName || fb.contact || '?')[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-700 truncate max-w-[120px] group-hover:text-blue-600 transition-colors">
+                          <p className="font-semibold text-slate-700 truncate max-w-[120px] group-hover:text-emerald-600 transition-colors">
                             {fb.displayName || '(Ẩn danh)'}
                           </p>
                           <p className="text-[11px] text-slate-400">{fb.contact}</p>
@@ -202,7 +202,7 @@ export default function FeedbacksPage() {
                     <td className="px-4 py-3.5">
                       <Link
                         to={`/feedbacks/${fb._id}`}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200 transition-all"
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-all duration-300"
                       >
                         <Eye className="h-3 w-3" /> Xem
                       </Link>
@@ -223,14 +223,14 @@ export default function FeedbacksPage() {
             </span>
             <div className="flex gap-1.5">
               <button
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:border-blue-300 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:border-blue-300 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
                 disabled={page >= pagination.totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

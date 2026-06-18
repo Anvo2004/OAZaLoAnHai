@@ -113,7 +113,7 @@ export default function FeedbackDetailPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold">Chi tiết phản ánh <span className="text-blue-600 font-mono">#{shortCode}</span></h1>
+          <h1 className="text-xl font-bold">Chi tiết phản ánh <span className="text-emerald-600 font-mono">#{shortCode}</span></h1>
           <p className="text-xs text-muted-foreground">{fb._id}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">

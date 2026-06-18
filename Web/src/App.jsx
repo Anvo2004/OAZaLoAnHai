@@ -1,10 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
 import AppLayout from '@/components/layout/AppLayout'
-import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import FeedbacksPage from '@/pages/FeedbacksPage'
 import FeedbackDetailPage from '@/pages/FeedbackDetailPage'
@@ -12,6 +12,8 @@ import UsersPage from '@/pages/UsersPage'
 import UserFormPage from '@/pages/UserFormPage'
 import SettingsPage from '@/pages/SettingsPage'
 import MessagesPage from '@/pages/MessagesPage'
+
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,7 +27,14 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/login"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+                  <LoginPage />
+                </Suspense>
+              }
+            />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
