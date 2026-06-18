@@ -1,0 +1,25 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+      - name: SSH vào VPS và deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            cd ${{ secrets.VPS_APP_DIR }}
+            git pull origin main
+            npm install --omit=dev
+            cd Web && npm install && npm run build && cd ..
+            pm2 restart anhai-backend || pm2 start server.js --name anhai-backend
+            echo "✅ Deploy xong: $(date)"
