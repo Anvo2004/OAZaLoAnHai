@@ -3,7 +3,7 @@
 # Chay: .\start.ps1
 # ============================================================
 
-$projectDir = $PSScriptRoot
+$projectDir = Join-Path $PSScriptRoot 'Backend'
 $port = 3000
 
 Write-Host ""

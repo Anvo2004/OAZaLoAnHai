@@ -19,7 +19,13 @@ jobs:
           script: |
             cd ${{ secrets.VPS_APP_DIR }}
             git pull origin main
-            npm install --omit=dev
-            cd Web && npm install && npm run build && cd ..
-            pm2 restart anhai-backend || pm2 start server.js --name anhai-backend
+            if [ -f .env ] && [ ! -f Backend/.env ]; then
+              mkdir -p Backend
+              mv .env Backend/.env
+              echo "📦 Đã tự động chuyển .env vào Backend/.env"
+            fi
+            cd Backend && npm install --omit=dev && cd ..
+            cd Frontend/Web && npm install && npm run build && cd ../..
+            pm2 delete anhai-backend 2>/dev/null || true
+            pm2 start Backend/server.js --name anhai-backend --cwd Backend
             echo "✅ Deploy xong: $(date)"

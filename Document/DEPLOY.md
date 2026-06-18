@@ -30,9 +30,12 @@ ss -tlnp | grep node              # xem port nào đang free
 ```bash
 mkdir -p /var/www/<app> && cd /var/www/<app>
 git clone <repo-url> .
+# Nếu repo theo cấu trúc Backend/ + Frontend/ (như An Hải): .env nằm trong Backend/.env
+cd Backend
 # Tạo .env (copy giá trị thật từ host cũ, không tạo mới)
 npm install --omit=dev
-pm2 start server.js --name <app>-backend --cwd /var/www/<app>
+cd ..
+pm2 start Backend/server.js --name <app>-backend --cwd Backend
 pm2 save
 curl http://localhost:<port>/health   # sanity check
 ```
@@ -95,10 +98,16 @@ jobs:
           script: |
             cd ${{ secrets.VPS_APP_DIR }}
             git pull origin main
-            npm install --production
-            pm2 restart <app>-backend || pm2 start server.js --name <app>-backend
+            cd Backend && npm install --omit=dev && cd ..
+            cd Frontend/Web && npm install && npm run build && cd ../..
+            pm2 delete <app>-backend 2>/dev/null || true
+            pm2 start Backend/server.js --name <app>-backend --cwd Backend
             echo "✅ Deploy xong: $(date)"
 ```
+
+(Nếu repo không có frontend build trong cùng pipeline, hoặc không theo cấu trúc Backend/Frontend, bỏ 2 dòng `cd Frontend/Web...` và đổi path `Backend/server.js` lại thành `server.js` ở root.)
+
+⚠️ **Gotcha PM2**: `pm2 restart <app>` KHÔNG đổi lại script path/cwd nếu vị trí file gốc đã thay đổi (ví dụ sau khi tái cấu trúc thư mục) — nó chỉ restart đúng config cũ. Phải `pm2 delete` rồi `pm2 start` lại với path/`--cwd` mới, như trên.
 
 4 secrets cần thêm (GitHub repo → Settings → Secrets and variables → Actions):
 
@@ -113,6 +122,8 @@ jobs:
 `https://github.com/settings/tokens/new?scopes=repo,workflow`
 
 ## 6. Frontend (Vercel)
+
+Nếu repo theo cấu trúc `Backend/` + `Frontend/Web/`: set **Root Directory** của project Vercel = `Frontend/Web` (không phải `Web`).
 
 Set biến môi trường rồi redeploy:
 

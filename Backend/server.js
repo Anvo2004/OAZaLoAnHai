@@ -209,7 +209,7 @@ app.get('/health', (req, res) => {
 });
 
 // ── Serve React build (production) ─────────────────────
-const webDist = path.join(__dirname, 'Web', 'dist');
+const webDist = path.join(__dirname, '..', 'Frontend', 'Web', 'dist');
 if (require('fs').existsSync(webDist)) {
   app.use(express.static(webDist));
   app.get('/app*', (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
