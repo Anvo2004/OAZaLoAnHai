@@ -356,9 +356,7 @@ async function saveFeedback(userId, state) {
     await sendZaloText(userId,
       '✅ Đã tiếp nhận phản ánh!\n\n' +
       `Mã phản ánh: #${shortCode}\n` +
-      'UBND phường An Hải sẽ xử lý\n' +
-      'trong 2-3 ngày làm việc kể từ\n' +
-      'ngày tiếp nhận. Cảm ơn bạn!'
+      'Cảm ơn bạn!'
     );
 
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
