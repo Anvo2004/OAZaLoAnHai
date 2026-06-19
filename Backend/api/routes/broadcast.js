@@ -83,8 +83,28 @@ router.post('/followers/sync', async (req, res) => {
 
 // ── Groups ─────────────────────────────────────────────────────────
 router.get('/groups', async (req, res) => {
-  const groups = await getStoredGroups()
-  res.json({ groups, count: groups.length })
+  try {
+    const manualGroups = await getStoredGroups() || []
+
+    // Tự động gộp chung với danh sách các nhóm trong danh mục (Category)
+    const Category = require('../../src/models/Category')
+    const cats = await Category.find({ zaloGroupId: { $ne: null, $ne: '' } }).lean()
+
+    const map = new Map()
+    // 1. Cho Category vào trước
+    cats.forEach(c => map.set(c.zaloGroupId, {
+      group_id: c.zaloGroupId,
+      name: c.name,
+      isFromCategory: true,
+    }))
+    // 2. Cho manualGroups ghi đè/bổ sung
+    manualGroups.forEach(g => map.set(g.group_id, g))
+
+    const groups = Array.from(map.values())
+    res.json({ groups, count: groups.length })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 router.post('/groups', async (req, res) => {
@@ -92,6 +112,21 @@ router.post('/groups', async (req, res) => {
   if (!group_id) return res.status(400).json({ error: 'Cần group_id' })
   try {
     const groups = await addGroup({ group_id: group_id.trim(), name: (name || '').trim() || group_id.trim() })
+    res.json({ ok: true, groups, count: groups.length })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.put('/groups/:id', async (req, res) => {
+  const { name, group_id } = req.body
+  const oldId = req.params.id
+  if (!group_id?.trim()) return res.status(400).json({ error: 'Cần group_id mới' })
+  try {
+    // Xóa entry cũ nếu group_id thay đổi
+    let groups = await removeGroup(oldId)
+    // Upsert với dữ liệu mới
+    groups = await addGroup({ group_id: group_id.trim(), name: (name || '').trim() || group_id.trim() })
     res.json({ ok: true, groups, count: groups.length })
   } catch (err) {
     res.status(500).json({ error: err.message })

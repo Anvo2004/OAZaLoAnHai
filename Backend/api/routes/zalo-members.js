@@ -2,7 +2,7 @@ const router = require('express').Router()
 const Category = require('../../src/models/Category')
 const ZaloGroupMember = require('../../src/models/ZaloGroupMember')
 const requireRole = require('../middleware/requireRole')
-const { syncCategoryMembers } = require('../../src/services/groupSyncService')
+const { syncMembersOfCategory } = require('../../src/services/groupSyncService')
 
 // GET /:categoryId — danh sách members của nhóm
 router.get('/:categoryId', async (req, res) => {
@@ -51,7 +51,7 @@ router.post('/sync/:categoryId', requireRole('superadmin'), async (req, res) => 
     if (!cat) return res.status(404).json({ error: 'Không tìm thấy danh mục' })
     if (!cat.zaloGroupId) return res.status(400).json({ error: 'Danh mục chưa có Group ID' })
 
-    const synced = await syncCategoryMembers(cat)
+    const synced = await syncMembersOfCategory(cat._id, cat.zaloGroupId)
     res.json({ synced })
   } catch (err) {
     res.status(500).json({ error: err.message })

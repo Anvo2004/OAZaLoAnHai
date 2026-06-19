@@ -16,9 +16,64 @@ const {
 const { getState } = require('../services/chatState');
 const { saveProfile } = require('../admin/profileCache');
 const { syncFollowers } = require('../admin/followerService');
+const { addGroup } = require('../admin/groupService');
 
 async function handleWebhook(body) {
   const eventName = body.event_name;
+
+  // Tự động lưu nhóm khi có thông tin group
+  if (body.group?.id) {
+    const groupId = String(body.group.id);
+    const groupName = body.group.name || '';
+    addGroup({ group_id: groupId, name: groupName })
+      .then(() => console.log(`[Group] Auto-saved: ${groupId} "${groupName}"`))
+      .catch(err => console.error('[Group] Auto-save error:', err.message));
+  }
+
+  if (eventName === 'oa_joined_group') {
+    console.log(`[Group] OA được thêm vào nhóm: ${body.group?.id} "${body.group?.name}"`);
+    return;
+  }
+
+  // Sự kiện vòng đời nhóm (GMF) → đồng bộ lại danh sách nhóm
+  if (['create_group', 'delete_group'].includes(eventName)) {
+    console.log(`[GroupSync] Webhook ${eventName} (group ${body.group?.id || body.group_id}) → lên lịch đồng bộ nhóm`);
+    require('../services/groupSyncService').scheduleSyncDebounced();
+    return;
+  }
+
+  // Sự kiện thành viên ra/vào nhóm
+  if (['user_join_group', 'user_leave_group'].includes(eventName)) {
+    const groupId = body.group?.id || body.group_id;
+    const users = body.users || [];
+
+    // Fallback nếu Zalo đổi lại cấu trúc
+    if (!users.length) {
+      const fallbackId = body.sender?.id || body.follower?.id || body.user?.id;
+      if (fallbackId) users.push({ id: fallbackId });
+    }
+
+    console.log(`[GroupSync] Webhook ${eventName}: groupId=${groupId}, có ${users.length} user`);
+
+    if (groupId && users.length > 0) {
+      const { handleUserJoinGroup, handleUserLeaveGroup } = require('../services/groupSyncService');
+
+      for (const u of users) {
+        const uid = u.id;
+        if (!uid) continue;
+
+        if (eventName === 'user_join_group') {
+          handleUserJoinGroup(groupId, uid, '', '').catch(e => console.error(e));
+        } else {
+          handleUserLeaveGroup(groupId, uid).catch(e => console.error(e));
+        }
+      }
+    } else {
+      console.warn('[GroupSync] Webhook thiếu groupId hoặc danh sách user rỗng! Không thể xử lý.');
+    }
+    return;
+  }
+
   const userId = body.sender?.id || body.follower?.id;
   if (!userId) return;
 

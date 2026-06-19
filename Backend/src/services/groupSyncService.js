@@ -1,48 +1,156 @@
+// Đồng bộ nhóm Zalo OA (GMF) → Web (Category + ZaloGroupMember).
+// Zalo là nguồn sự thật: tự tạo Category cho nhóm mới, sửa lệch group_id, cập nhật tên + thành viên.
 const Category = require('../models/Category');
 const ZaloGroupMember = require('../models/ZaloGroupMember');
-const { getZaloGroupMembers } = require('../utils/zaloApi');
+const { getGroupsOfOA, getGroupMembersV3 } = require('../utils/zaloApi');
 
+const DEFAULT_ICON = '👥';
 const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 phút
 
-async function syncCategoryMembers(category) {
-  if (!category.zaloGroupId) return 0;
-  const { members } = await getZaloGroupMembers(category.zaloGroupId);
-  let synced = 0;
-  for (const m of members) {
-    const userId = m.user_id || m.id;
-    if (!userId) continue;
+async function syncMembersOfCategory(categoryId, groupId) {
+  try {
+    const res = await getGroupMembersV3(groupId);
+    if (!res || !res.members) return 0;
+
+    // Xóa thành viên cũ để cập nhật mới
+    await ZaloGroupMember.deleteMany({ categoryId });
+
+    let count = 0;
+    for (const m of res.members) {
+      if (m.oa_id) continue; // Bỏ qua chính OA
+      await ZaloGroupMember.create({
+        zaloUserId: String(m.user_id),
+        displayName: m.name || 'Người dùng Zalo',
+        avatar: m.avatar || '',
+        categoryId: categoryId,
+        groupId: String(groupId),
+        syncedAt: new Date(),
+      });
+      count++;
+    }
+    return count;
+  } catch (err) {
+    console.error('[GroupSync] Lỗi syncMembersOfCategory:', err.message);
+    return 0;
+  }
+}
+
+// Xử lý khi có webhook báo user join nhóm
+async function handleUserJoinGroup(groupId, userId, displayName, avatar) {
+  try {
+    const cat = await Category.findOne({ zaloGroupId: String(groupId) });
+    if (!cat) return; // Nhóm chưa được đồng bộ
+
+    // Nếu không có tên/avatar thì thử gọi API lấy profile (nếu Zalo cho phép)
+    let finalName = displayName;
+    let finalAvatar = avatar;
+    if (!finalName) {
+      const { getZaloUserProfile } = require('../utils/zaloApi');
+      const profile = await getZaloUserProfile(userId);
+      if (profile) {
+        finalName = profile.display_name;
+        finalAvatar = profile.avatar;
+      }
+    }
+
     await ZaloGroupMember.findOneAndUpdate(
-      { zaloUserId: String(userId), categoryId: category._id },
+      { zaloUserId: String(userId), categoryId: cat._id },
       {
         zaloUserId: String(userId),
-        displayName: m.display_name || m.name || '',
-        avatar: m.avatar || '',
-        categoryId: category._id,
-        groupId: category.zaloGroupId,
+        displayName: finalName || 'Người dùng Zalo',
+        avatar: finalAvatar || '',
+        categoryId: cat._id,
+        groupId: String(groupId),
         syncedAt: new Date(),
       },
       { upsert: true }
     );
-    synced++;
+    console.log(`[GroupSync] Đã thêm thành viên ${userId} vào nhóm ${groupId}`);
+  } catch (err) {
+    console.error('[GroupSync] Lỗi thêm thành viên qua webhook:', err.message);
   }
-  return synced;
 }
 
-async function syncAllGroups() {
-  const categories = await Category.find({ zaloGroupId: { $ne: '' } }).lean();
-  for (const category of categories) {
-    try {
-      const synced = await syncCategoryMembers(category);
-      console.log(`[GroupSync] ${category.name}: đồng bộ ${synced} thành viên`);
-    } catch (err) {
-      console.error(`[GroupSync] Lỗi đồng bộ nhóm ${category.name}:`, err.message);
+// Xử lý khi có webhook báo user leave nhóm
+async function handleUserLeaveGroup(groupId, userId) {
+  try {
+    const cat = await Category.findOne({ zaloGroupId: String(groupId) });
+    if (!cat) return;
+    await ZaloGroupMember.deleteOne({ zaloUserId: String(userId), categoryId: cat._id });
+    console.log(`[GroupSync] Đã xóa thành viên ${userId} khỏi nhóm ${groupId}`);
+  } catch (err) {
+    console.error('[GroupSync] Lỗi xóa thành viên qua webhook:', err.message);
+  }
+}
+
+async function syncGroupsFromZalo() {
+  const raw = await getGroupsOfOA();
+  if (raw?.error !== 0) {
+    throw new Error(`getGroupsOfOA error ${raw?.error}: ${raw?.message}`);
+  }
+  const groups = raw?.data?.groups || [];
+  const realIds = new Set(groups.map(g => String(g.group_id)));
+
+  const cats = await Category.find({}).lean();
+  let nextOrder = cats.reduce((m, c) => Math.max(m, c.order || 0), 0) + 1;
+
+  let created = 0, updated = 0, repaired = 0, membersSynced = 0;
+
+  for (const g of groups) {
+    const gid = String(g.group_id);
+    const name = g.name || '';
+    let cat = cats.find(c => String(c.zaloGroupId) === gid);
+
+    if (cat) {
+      if (name && cat.name !== name) {
+        await Category.findByIdAndUpdate(cat._id, { name });
+        updated++;
+      }
+    } else {
+      // Sửa lệch ID: Category cùng tên nhưng group_id cũ không còn là nhóm thật
+      const stale = cats.find(c => c.name === name && !realIds.has(String(c.zaloGroupId)));
+      if (stale) {
+        await Category.findByIdAndUpdate(stale._id, { zaloGroupId: gid });
+        cat = { ...stale, zaloGroupId: gid };
+        repaired++;
+      } else {
+        cat = await Category.create({ name, zaloGroupId: gid, icon: DEFAULT_ICON, order: nextOrder++ });
+        created++;
+      }
     }
+
+    // Gọi API listmember v3 để đồng bộ danh sách thành viên
+    const syncedCount = await syncMembersOfCategory(cat._id, gid);
+    membersSynced += syncedCount;
   }
+
+  console.log(`[GroupSync] Xong: +${created} mới, ~${updated} đổi tên, ⟳${repaired} sửa ID / ${groups.length} nhóm. Tổng thành viên: ${membersSynced}`);
+  return { total: groups.length, created, updated, repaired, membersSynced };
 }
 
+// Gộp nhiều webhook (vào/ra liên tục) thành 1 lần sync.
+let _pending = null;
+function scheduleSyncDebounced(delay = 8000) {
+  if (_pending) return;
+  _pending = setTimeout(() => {
+    _pending = null;
+    syncGroupsFromZalo().catch(err => console.error('[GroupSync] debounced lỗi:', err.message));
+  }, delay);
+}
+
+// Đồng bộ định kỳ toàn bộ nhóm Zalo → Web (chạy nền).
 function startGroupSyncSchedule() {
-  setInterval(syncAllGroups, SYNC_INTERVAL_MS);
-  console.log(`[GroupSync] Tự động đồng bộ thành viên nhóm mỗi ${SYNC_INTERVAL_MS / 60000} phút`);
+  setInterval(() => {
+    syncGroupsFromZalo().catch(err => console.error('[GroupSync] định kỳ lỗi:', err.message));
+  }, SYNC_INTERVAL_MS);
+  console.log(`[GroupSync] Tự động đồng bộ nhóm mỗi ${SYNC_INTERVAL_MS / 60000} phút`);
 }
 
-module.exports = { syncCategoryMembers, syncAllGroups, startGroupSyncSchedule };
+module.exports = {
+  syncGroupsFromZalo,
+  syncMembersOfCategory,
+  scheduleSyncDebounced,
+  handleUserJoinGroup,
+  handleUserLeaveGroup,
+  startGroupSyncSchedule,
+};
