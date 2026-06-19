@@ -14,4 +14,7 @@ module.exports = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
   PUBLIC_URL: process.env.PUBLIC_URL || '',
+  EMAIL_ADMIN: process.env.EMAIL_ADMIN || '',
+  EMAIL_ADMIN_PASSWORD: process.env.EMAIL_ADMIN_PASSWORD || '',
+  DASHBOARD_URL: process.env.DASHBOARD_URL || '',
 };

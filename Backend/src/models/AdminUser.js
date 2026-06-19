@@ -9,6 +9,7 @@ const adminUserSchema = new mongoose.Schema({
   // staff giữ lại cho backward compat
   role:        { type: String, enum: ['superadmin', 'dept_leader', 'officer', 'staff'], default: 'officer' },
   zaloUserId:  { type: String, default: '' },
+  email:       { type: String, default: '', trim: true, lowercase: true },
   categoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
   managedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
   createdAt:   { type: Date, default: Date.now },

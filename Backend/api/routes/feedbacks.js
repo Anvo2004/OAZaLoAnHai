@@ -2,8 +2,10 @@ const router = require('express').Router()
 const Feedback = require('../../src/models/Feedback')
 const AdminUser = require('../../src/models/AdminUser')
 const Category = require('../../src/models/Category')
+const Notification = require('../../src/models/Notification')
 const requireRole = require('../middleware/requireRole')
 const { sendZaloText, sendZaloToGroup } = require('../../src/utils/zaloApi')
+const { sendMail, buildFeedbackEmailHtml } = require('../../src/utils/mailer')
 const { getProfiles } = require('../../src/admin/profileCache')
 
 const LEADER_ROLES = ['superadmin', 'dept_leader']
@@ -44,8 +46,14 @@ router.get('/', async (req, res) => {
     else if (assignedTo) filter.assignedTo = assignedTo
     if (categoryId) filter.categoryId = categoryId
     if (q) {
-      const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      filter.$or = [{ displayName: regex }, { contact: regex }, { content: regex }]
+      const cleanQ = q.replace(/^#/, '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(cleanQ, 'i')
+      filter.$or = [
+        { displayName: regex },
+        { contact: regex },
+        { content: regex },
+        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: cleanQ, options: 'i' } } },
+      ]
     }
 
     const [feedbacks, total] = await Promise.all([
@@ -167,10 +175,25 @@ router.post('/:id/assign', requireRole('superadmin', 'dept_leader'), async (req,
 
     // Thông báo vào nhóm Zalo kèm @mention cán bộ
     if (assignedTo) {
-      const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId').lean()
+      const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId email').lean()
       const catName = feedback.categoryId?.name || ''
       const groupId = feedback.categoryId?.zaloGroupId
       const shortCode = feedback._id.toString().slice(-5).toUpperCase()
+
+      // Thông báo trong app + email cho cán bộ được phân công
+      await Notification.create({
+        userId: assignedTo,
+        type: 'assigned',
+        feedbackId: feedback._id,
+        message: `Bạn được phân công xử lý phản ánh #${shortCode}`,
+      })
+      if (officer?.email) {
+        await sendMail({
+          to: officer.email,
+          subject: `[UBND An Hải] Phân công xử lý phản ánh #${shortCode}`,
+          html: buildFeedbackEmailHtml({ heading: 'Bạn được phân công xử lý phản ánh mới', feedback, shortCode }),
+        })
+      }
       const mentionTag = `@${officer?.fullName || assignedTo}`
       const msg =
         `📋 PHÂN CÔNG XỬ LÝ PHẢN ÁNH\n` +
@@ -236,6 +259,24 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
       `✍️ Nội dung dự thảo:\n${draftResponse.trim().slice(0, 150)}\n` +
       `(Vui lòng vào hệ thống để duyệt)`
     await sendZaloToGroup(msg, groupId)
+
+    // Thông báo trong app + email cho lãnh đạo phòng quản lý loại phản ánh này
+    const leaders = await AdminUser.find({
+      role: 'dept_leader',
+      $or: [{ categoryIds: feedback.categoryId?._id }, { categoryIds: { $size: 0 } }],
+    }, 'fullName email').lean()
+
+    await Promise.all(leaders.map((l) => Notification.create({
+      userId: l._id,
+      type: 'draft_submitted',
+      feedbackId: feedback._id,
+      message: `Dự thảo phản ánh #${shortCode} đang chờ bạn duyệt`,
+    })))
+    await Promise.all(leaders.filter((l) => l.email).map((l) => sendMail({
+      to: l.email,
+      subject: `[UBND An Hải] Dự thảo chờ duyệt #${shortCode}`,
+      html: buildFeedbackEmailHtml({ heading: 'Có dự thảo phản ánh đang chờ bạn duyệt', feedback, shortCode }),
+    })))
 
     res.json({ ok: true })
   } catch (err) {

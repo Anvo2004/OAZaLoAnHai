@@ -7,6 +7,7 @@ const userRoutes = require('./users')
 const categoryRoutes = require('./categories')
 const zaloMembersRoutes = require('./zalo-members')
 const broadcastRoutes = require('./broadcast')
+const notificationRoutes = require('./notifications')
 
 router.use('/auth', authRoutes)
 
@@ -17,5 +18,6 @@ router.use('/users', userRoutes)
 router.use('/categories', categoryRoutes)
 router.use('/zalo-members', zaloMembersRoutes)
 router.use('/broadcast', broadcastRoutes)
+router.use('/notifications', notificationRoutes)
 
 module.exports = router

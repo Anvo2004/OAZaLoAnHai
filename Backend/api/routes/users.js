@@ -34,7 +34,7 @@ router.get('/:id', async (req, res) => {
 // POST / — tạo tài khoản
 router.post('/', async (req, res) => {
   try {
-    const { username, password, fullName, role, zaloUserId, categoryIds } = req.body
+    const { username, password, fullName, role, zaloUserId, categoryIds, email } = req.body
     if (!username || !password || !fullName) {
       return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin bắt buộc' })
     }
@@ -44,6 +44,7 @@ router.post('/', async (req, res) => {
       fullName,
       role: role || 'officer',
       zaloUserId: zaloUserId || '',
+      email: email || '',
       categoryIds: categoryIds || [],
     })
     res.status(201).json({
@@ -52,6 +53,7 @@ router.post('/', async (req, res) => {
         username: user.username,
         fullName: user.fullName,
         role: user.role,
+        email: user.email,
         categoryIds: user.categoryIds,
       },
     })
@@ -64,12 +66,13 @@ router.post('/', async (req, res) => {
 // PUT /:id — cập nhật
 router.put('/:id', async (req, res) => {
   try {
-    const { fullName, role, password, zaloUserId, categoryIds } = req.body
+    const { fullName, role, password, zaloUserId, categoryIds, email } = req.body
     const user = await AdminUser.findById(req.params.id)
     if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' })
     user.fullName = fullName
     user.role = role
     if (zaloUserId !== undefined) user.zaloUserId = zaloUserId
+    if (email !== undefined) user.email = email
     if (categoryIds !== undefined) user.categoryIds = categoryIds
     if (password && password.trim()) user.password = password.trim()
     await user.save()

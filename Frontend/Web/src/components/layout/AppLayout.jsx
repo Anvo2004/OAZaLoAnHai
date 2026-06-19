@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
-import { Search, Bell, Menu, X } from 'lucide-react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import Sidebar from './Sidebar'
+import NotificationBell from './NotificationBell'
 
 const PAGE_TITLES = {
   '/dashboard': { title: 'Tổng quan', subtitle: 'Thống kê & theo dõi góp ý người dân' },
@@ -20,10 +21,18 @@ function getHourGreeting() {
 export default function AppLayout() {
   const { user } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
 
   const basePath = '/' + location.pathname.split('/')[1]
   const page = PAGE_TITLES[basePath] ?? { title: 'Trang', subtitle: '' }
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault()
+    if (!searchValue.trim()) return
+    navigate(`/feedbacks?q=${encodeURIComponent(searchValue.trim())}`)
+  }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-emerald-50/50 overflow-hidden">
@@ -58,21 +67,20 @@ export default function AppLayout() {
 
             {/* Right: search + notifications + user */}
             <div className="flex items-center gap-3 shrink-0">
-              {/* Search (hidden on small screens) */}
-              <div className="relative hidden md:block">
+              {/* Search mã hồ sơ (hidden on small screens) */}
+              <form onSubmit={handleSearchSubmit} className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/50 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Tìm kiếm..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  placeholder="Tìm mã hồ sơ..."
                   className="h-9 w-48 rounded-xl bg-white/15 border border-white/20 pl-9 pr-4 text-sm text-white placeholder-white/50 focus:outline-none focus:bg-white/22 focus:border-white/40 focus:w-56 transition-all duration-300"
                 />
-              </div>
+              </form>
 
               {/* Bell */}
-              <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 border border-white/20 hover:bg-white/25 transition-all">
-                <Bell className="h-4 w-4 text-white" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-400 ring-1 ring-emerald-700" />
-              </button>
+              <NotificationBell />
 
               {/* User chip */}
               <div className="flex items-center gap-2.5 rounded-xl bg-white/15 border border-white/20 px-3 py-1.5">

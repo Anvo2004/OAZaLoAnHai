@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -28,7 +28,8 @@ function SelectField({ value, onChange, children }) {
 
 export default function FeedbacksPage() {
   const { user } = useAuth()
-  const [filter, setFilter] = useState({ status: '', assignedTo: '', categoryId: '', q: '' })
+  const [searchParams] = useSearchParams()
+  const [filter, setFilter] = useState({ status: '', assignedTo: '', categoryId: '', q: searchParams.get('q') || '' })
   const [page, setPage] = useState(1)
 
   const { data, isLoading } = useQuery({
@@ -103,7 +104,7 @@ export default function FeedbacksPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300 pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm theo tên, liên hệ, nội dung..."
+              placeholder="Tìm theo mã hồ sơ, tên, liên hệ, nội dung..."
               value={filter.q}
               onChange={(e) => setF('q', e.target.value)}
               className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-400 transition-all duration-300"
@@ -140,6 +141,7 @@ export default function FeedbacksPage() {
               <thead>
                 <tr style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }}>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-10">#</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-20">Mã hồ sơ</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Người gửi</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80">Nội dung</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white/80 w-28">Trạng thái</th>
@@ -156,6 +158,9 @@ export default function FeedbacksPage() {
                   <tr key={fb._id} className="hover:bg-emerald-50/40 transition-colors duration-300 group">
                     <td className="px-4 py-3.5 text-slate-300 text-xs font-mono">
                       {(page - 1) * 20 + i + 1}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs font-mono font-semibold text-emerald-600">
+                      #{fb._id.slice(-5).toUpperCase()}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">

@@ -22,7 +22,7 @@ export default function UserFormPage() {
   const queryClient = useQueryClient()
   const [showPwd, setShowPwd] = useState(false)
   const [form, setForm] = useState({
-    username: '', fullName: '', password: '', role: 'officer',
+    username: '', fullName: '', email: '', password: '', role: 'officer',
     zaloUserId: '', categoryIds: [],
   })
 
@@ -82,6 +82,7 @@ export default function UserFormPage() {
       setForm({
         username: u.username,
         fullName: u.fullName,
+        email: u.email || '',
         password: '',
         role: u.role,
         zaloUserId: u.zaloUserId || '',
@@ -118,6 +119,7 @@ export default function UserFormPage() {
 
     const payload = {
       fullName: form.fullName,
+      email: form.email,
       role: form.role,
       zaloUserId: form.zaloUserId,
       categoryIds: form.categoryIds,
@@ -174,6 +176,13 @@ export default function UserFormPage() {
             <div className="space-y-1.5">
               <Label>Họ và tên <span className="text-destructive">*</span></Label>
               <Input placeholder="vd: Nguyễn Văn A" value={form.fullName} onChange={set('fullName')} />
+            </div>
+
+            {/* Email — nhận thông báo phân công/duyệt hồ sơ */}
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" placeholder="vd: nguyenvana@gmail.com" value={form.email} onChange={set('email')} autoComplete="off" />
+              <p className="text-xs text-muted-foreground">Dùng để gửi thông báo phân công, duyệt hồ sơ qua email (không bắt buộc)</p>
             </div>
 
             {/* Vai trò */}
