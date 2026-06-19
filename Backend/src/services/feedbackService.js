@@ -3,31 +3,13 @@ const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary')
 const { saveProfile } = require('../admin/profileCache');
 const Feedback = require('../models/Feedback');
 const Category = require('../models/Category');
+const { setState, getState, clearState } = require('./chatState');
 
 const MAX_IMAGES = 5;
 const BATCH_DELAY_MS = 3000; // Chờ 3s để gộp ảnh gửi cùng lúc (Zalo có thể giao event chậm)
 
-// State machine lưu trạng thái từng user trong memory (10 phút timeout)
-const userStates = new Map();
-
 // Buffer gộp ảnh: { userId → { urls: [], timer } }
 const imageBatchBuffer = new Map();
-
-function setState(userId, data) {
-  userStates.set(userId, { ...data, ts: Date.now() });
-  setTimeout(() => {
-    const cur = userStates.get(userId);
-    if (cur && cur.ts === userStates.get(userId)?.ts) userStates.delete(userId);
-  }, 10 * 60 * 1000);
-}
-
-function getState(userId) {
-  return userStates.get(userId) || null;
-}
-
-function clearState(userId) {
-  userStates.delete(userId);
-}
 
 function isPhone(text) {
   return /^(0|\+84)[3-9]\d{8}$/.test(text.replace(/\s/g, ''));

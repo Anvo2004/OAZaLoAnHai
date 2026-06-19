@@ -6,6 +6,14 @@ const {
   handleContactCard,
   isFeedbackTrigger,
 } = require('../services/feedbackService');
+const {
+  isLookupTrigger,
+  isDirectCode,
+  startLookup,
+  handleLookupReply,
+  lookupByCode,
+} = require('../services/lookupService');
+const { getState } = require('../services/chatState');
 const { saveProfile } = require('../admin/profileCache');
 const { syncFollowers } = require('../admin/followerService');
 
@@ -57,6 +65,22 @@ async function handleWebhook(body) {
       }
     }
 
+    const state = getState(userId);
+    if (state?.step === 'lookup_list') {
+      await handleLookupReply(userId, text);
+      return;
+    }
+    if (!state) {
+      if (isLookupTrigger(text)) {
+        await startLookup(userId);
+        return;
+      }
+      if (isDirectCode(text)) {
+        await lookupByCode(userId, text);
+        return;
+      }
+    }
+
     await handleText(userId, text, displayName);
     return;
   }
@@ -64,6 +88,10 @@ async function handleWebhook(body) {
   // User click menu (submit_info)
   if (eventName === 'user_submit_info') {
     const action = (body.info?.action_payload || body.info?.action || body.info?.data || '').trim();
+    if (isLookupTrigger(action)) {
+      await startLookup(userId);
+      return;
+    }
     if (isFeedbackTrigger(action) || action === '#goopy') {
       await startFeedback(userId, displayName);
     }
