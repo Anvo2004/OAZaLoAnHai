@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
+import { cn, getAvatarColor } from '@/lib/utils'
 
 function TokenExpiredBanner() {
   return (
@@ -63,7 +63,7 @@ function FollowerAvatar({ f, size = 8 }) {
     )
   }
   return (
-    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+    <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br ${getAvatarColor(f.user_id || name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
       {initial}
     </div>
   )

@@ -13,14 +13,24 @@ async function redisCmd(...args) {
 }
 
 // Lưu profile user vào Redis (key: anhai_profile:{userId}), TTL 90 ngày
+// Không ghi đè avatar đã có bằng rỗng — webhook Zalo thường không kèm avatar,
+// chỉ Zalo Profile API (getZaloUserProfile) mới trả avatar thật đáng tin cậy.
 async function saveProfile(userId, displayName, avatar = '') {
   if (!userId || !displayName || displayName === userId) return;
   const key = `anhai_profile:${userId}`;
-  const value = JSON.stringify({ display_name: displayName, avatar: avatar || '' });
+  let finalAvatar = avatar || '';
+  if (!finalAvatar) {
+    const existing = await redisCmd('GET', key);
+    if (existing) {
+      try { finalAvatar = JSON.parse(existing).avatar || ''; } catch {}
+    }
+  }
+  const value = JSON.stringify({ display_name: displayName, avatar: finalAvatar });
   await redisCmd('SET', key, value, 'EX', 60 * 60 * 24 * 90);
 }
 
 // Lấy profile của nhiều userId từ Redis; fallback gọi Zalo API nếu cache miss
+// HOẶC nếu cache có nhưng thiếu avatar (webhook ghi vào trước, chưa có avatar thật).
 async function getProfiles(userIds) {
   if (!userIds?.length) return {};
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -44,17 +54,19 @@ async function getProfiles(userIds) {
     } catch {}
   }
 
-  // Bước 2: fallback gọi Zalo API cho các userId chưa có trong cache
-  const missingIds = userIds.filter(id => !result[id]);
-  if (missingIds.length) {
+  // Bước 2: gọi Zalo API cho userId chưa có trong cache HOẶC cache có nhưng thiếu avatar
+  const needFetch = userIds.filter(id => !result[id] || !result[id].avatar);
+  if (needFetch.length) {
     // Lazy require tránh circular dependency khi module load
     const { getZaloUserProfile } = require('../utils/zaloApi');
-    await Promise.all(missingIds.map(async (id) => {
+    await Promise.all(needFetch.map(async (id) => {
       try {
         const profile = await getZaloUserProfile(id);
-        if (profile?.display_name) {
-          await saveProfile(id, profile.display_name, profile.avatar || '');
-          result[id] = { display_name: profile.display_name, avatar: profile.avatar || '' };
+        if (profile?.display_name || profile?.avatar) {
+          const displayName = profile.display_name || result[id]?.display_name || id;
+          const avatar = profile.avatar || result[id]?.avatar || '';
+          await saveProfile(id, displayName, avatar);
+          result[id] = { display_name: displayName, avatar };
         }
       } catch {}
     }));

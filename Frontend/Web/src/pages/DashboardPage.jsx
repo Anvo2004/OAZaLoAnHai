@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import StatusBadge from '@/components/feedback/StatusBadge'
-import { formatDateShort } from '@/lib/utils'
+import { formatDateShort, getAvatarColor } from '@/lib/utils'
 
 function StatCard({ label, value, icon: Icon, colorClass, bgClass, iconBg }) {
   return (
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                       />
                     ) : null}
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white text-xs font-bold shadow-sm shadow-emerald-200"
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarColor(fb.userId || name)} text-white text-xs font-bold shadow-sm`}
                       style={{ display: fb.avatar ? 'none' : 'flex' }}
                     >
                       {initial}

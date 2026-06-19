@@ -18,16 +18,14 @@ router.get('/', async (req, res) => {
       .lean()
 
     // Enrich displayName + avatar từ Redis profile cache
-    const missingIds = recent.filter((f) => !f.displayName && f.userId).map((f) => f.userId)
-    if (missingIds.length) {
-      const profiles = await getProfiles(missingIds)
+    const needProfile = recent.filter((f) => f.userId && (!f.displayName || !f.avatar)).map((f) => f.userId)
+    if (needProfile.length) {
+      const profiles = await getProfiles(needProfile)
       recent.forEach((f) => {
-        if (f.userId && profiles[f.userId]) {
-          if (!f.displayName && profiles[f.userId].display_name) {
-            f.displayName = profiles[f.userId].display_name
-          }
-          if (!f.avatar) f.avatar = profiles[f.userId].avatar || ''
-        }
+        const p = f.userId && profiles[f.userId]
+        if (!p) return
+        if (!f.displayName && p.display_name) f.displayName = p.display_name
+        if (!f.avatar) f.avatar = p.avatar || ''
       })
     }
 

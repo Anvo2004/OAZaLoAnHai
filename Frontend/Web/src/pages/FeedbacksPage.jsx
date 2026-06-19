@@ -5,7 +5,7 @@ import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox } from '
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import StatusBadge from '@/components/feedback/StatusBadge'
-import { formatDateShort } from '@/lib/utils'
+import { formatDateShort, getAvatarColor } from '@/lib/utils'
 
 const STATUS_OPTIONS = [
   { value: '',         label: 'Tất cả trạng thái' },
@@ -159,7 +159,18 @@ export default function FeedbacksPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white text-xs font-bold shadow-sm">
+                        {fb.avatar ? (
+                          <img
+                            src={fb.avatar}
+                            alt={fb.displayName || fb.contact || '?'}
+                            className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm"
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                          />
+                        ) : null}
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarColor(fb.userId || fb.displayName || fb.contact || '?')} text-white text-xs font-bold shadow-sm`}
+                          style={{ display: fb.avatar ? 'none' : 'flex' }}
+                        >
                           {(fb.displayName || fb.contact || '?')[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">

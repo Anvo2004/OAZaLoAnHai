@@ -44,14 +44,15 @@ router.get('/', async (req, res) => {
       Feedback.countDocuments(filter),
     ])
 
-    // Enrich displayName từ Redis profile cache cho những feedback chưa có tên
-    const missing = feedbacks.filter((f) => !f.displayName && f.userId).map((f) => f.userId)
-    if (missing.length) {
-      const profiles = await getProfiles(missing)
+    // Enrich displayName + avatar từ Redis profile cache
+    const needProfile = feedbacks.filter((f) => f.userId && (!f.displayName || !f.avatar)).map((f) => f.userId)
+    if (needProfile.length) {
+      const profiles = await getProfiles(needProfile)
       feedbacks.forEach((f) => {
-        if (!f.displayName && f.userId && profiles[f.userId]?.display_name) {
-          f.displayName = profiles[f.userId].display_name
-        }
+        const p = f.userId && profiles[f.userId]
+        if (!p) return
+        if (!f.displayName && p.display_name) f.displayName = p.display_name
+        if (!f.avatar) f.avatar = p.avatar || ''
       })
     }
 
@@ -73,6 +74,16 @@ router.get('/:id', async (req, res) => {
       .populate('categoryId', 'name icon zaloGroupId')
       .lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+
+    // Enrich displayName + avatar từ Redis profile cache
+    if (feedback.userId && (!feedback.displayName || !feedback.avatar)) {
+      const profiles = await getProfiles([feedback.userId])
+      const p = profiles[feedback.userId]
+      if (p) {
+        if (!feedback.displayName && p.display_name) feedback.displayName = p.display_name
+        if (!feedback.avatar) feedback.avatar = p.avatar || ''
+      }
+    }
 
     // Lấy danh sách cán bộ để phân công
     const me = req.user
