@@ -8,6 +8,21 @@ const { getProfiles } = require('../../src/admin/profileCache')
 
 const LEADER_ROLES = ['superadmin', 'dept_leader']
 
+// Kiểm tra quyền truy cập 1 feedback cụ thể theo categoryId (dept_leader) / assignedTo (officer, staff)
+function canAccessFeedback(user, feedback) {
+  if (user.role === 'superadmin') return true
+  if (user.role === 'dept_leader') {
+    if (!user.categoryIds?.length) return true // leader chưa được gán category cụ thể -> quản lý chung
+    const catId = String(feedback.categoryId?._id || feedback.categoryId || '')
+    return user.categoryIds.some((id) => String(id) === catId)
+  }
+  if (user.role === 'officer' || user.role === 'staff') {
+    const assignedId = String(feedback.assignedTo?._id || feedback.assignedTo || '')
+    return !!assignedId && assignedId === String(user.id)
+  }
+  return false
+}
+
 // GET / — danh sách
 router.get('/', async (req, res) => {
   try {
@@ -18,7 +33,7 @@ router.get('/', async (req, res) => {
 
     // Lọc theo quyền: officer chỉ thấy phản ánh được phân công cho mình
     const me = req.user
-    if (me.role === 'officer') {
+    if (me.role === 'officer' || me.role === 'staff') {
       filter.assignedTo = me.id
     } else if (me.role === 'dept_leader' && me.categoryIds?.length) {
       filter.categoryId = { $in: me.categoryIds }
@@ -74,6 +89,9 @@ router.get('/:id', async (req, res) => {
       .populate('categoryId', 'name icon zaloGroupId')
       .lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
 
     // Enrich displayName + avatar từ Redis profile cache
     if (feedback.userId && (!feedback.displayName || !feedback.avatar)) {
@@ -105,6 +123,12 @@ router.get('/:id', async (req, res) => {
 // PUT /:id — cập nhật note (officer + leader)
 router.put('/:id', async (req, res) => {
   try {
+    const feedback = await Feedback.findById(req.params.id, 'categoryId assignedTo').lean()
+    if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
+
     const { note } = req.body
     const update = { updatedAt: new Date() }
     if (note !== undefined) update.note = note
@@ -131,6 +155,9 @@ router.post('/:id/assign', requireRole('superadmin', 'dept_leader'), async (req,
     const { assignedTo } = req.body
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
 
     await Feedback.findByIdAndUpdate(req.params.id, {
       assignedTo: assignedTo || null,
@@ -183,6 +210,9 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
 
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
     if (feedback.status === 'resolved') {
       return res.status(400).json({ error: 'Phản ánh đã được giải quyết, không thể sửa dự thảo' })
     }
@@ -218,6 +248,9 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
   try {
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
     if (feedback.status !== 'draft') {
       return res.status(400).json({ error: 'Chỉ duyệt được phản ánh ở trạng thái Dự thảo' })
     }
@@ -281,6 +314,9 @@ router.post('/:id/reject', requireRole('superadmin', 'dept_leader'), async (req,
     const { rejectedReason } = req.body
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
     if (feedback.status !== 'draft') {
       return res.status(400).json({ error: 'Chỉ từ chối được phản ánh ở trạng thái Dự thảo' })
     }
@@ -313,8 +349,11 @@ router.post('/:id/reply', requireRole('superadmin', 'dept_leader'), async (req, 
   try {
     const { response } = req.body
     if (!response?.trim()) return res.status(400).json({ error: 'Vui lòng nhập nội dung phản hồi' })
-    const feedback = await Feedback.findById(req.params.id)
+    const feedback = await Feedback.findById(req.params.id).lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
+    if (!canAccessFeedback(req.user, feedback)) {
+      return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
+    }
     await sendZaloText(feedback.userId, response.trim())
     await Feedback.findByIdAndUpdate(req.params.id, {
       finalResponse: response.trim(),
