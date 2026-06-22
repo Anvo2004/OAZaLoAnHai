@@ -49,12 +49,14 @@ export default function AppLayout() {
       {/* Main content */}
       <div className="ml-64 flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Gradient header */}
-        <header className="relative shrink-0 overflow-hidden"
+        <header className="relative shrink-0"
           style={{ background: 'linear-gradient(135deg, #047857 0%, #059669 40%, #10b981 100%)' }}>
-          {/* Decorative blobs */}
-          <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/5" />
-          <div className="pointer-events-none absolute bottom-0 right-32 h-32 w-32 rounded-full bg-amber-300/10" />
-          <div className="pointer-events-none absolute -bottom-6 left-1/3 h-20 w-20 rounded-full bg-teal-200/10" />
+          {/* Decorative blobs — riêng khung này clip, không clip cả header để dropdown thông báo không bị che */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/5" />
+            <div className="absolute bottom-0 right-32 h-32 w-32 rounded-full bg-amber-300/10" />
+            <div className="absolute -bottom-6 left-1/3 h-20 w-20 rounded-full bg-teal-200/10" />
+          </div>
 
           <div className="relative px-6 py-4 flex items-center justify-between gap-4">
             {/* Left: greeting + page title */}
