@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Send, RefreshCw, Loader2, Image, Video, FileText, Users, History,
   X, Plus, Trash2, Search, CheckSquare, Square, ChevronDown, ChevronUp,
-  AlertTriangle, ExternalLink,
+  AlertTriangle, ExternalLink, CalendarClock, Ban,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -73,6 +73,7 @@ function FollowerAvatar({ f, size = 8 }) {
 function TabBar({ active, onChange }) {
   const tabs = [
     { id: 'send',      label: 'Gửi tin nhắn', icon: Send },
+    { id: 'scheduled', label: 'Lịch hẹn', icon: CalendarClock },
     { id: 'followers', label: 'Followers & Nhóm', icon: Users },
     { id: 'logs',      label: 'Lịch sử gửi', icon: History },
   ]
@@ -122,7 +123,7 @@ function AttachTypeTabs({ active, onChange }) {
 }
 
 // ── SendTab ────────────────────────────────────────────────────────────────────
-function SendTab({ followers, groups, syncedAt }) {
+function SendTab({ followers, groups }) {
   const [attachType, setAttachType] = useState('image')
   const [imgPreviews, setImgPreviews] = useState([])   // [{file, url, id?}]
   const [videoInfo, setVideoInfo] = useState(null)     // {file, articleToken?}
@@ -137,7 +138,9 @@ function SendTab({ followers, groups, syncedAt }) {
   const [selectedFollowers, setSelectedFollowers] = useState(new Set())
   const [jobId, setJobId] = useState(null)
   const [job, setJob] = useState(null)
+  const [scheduledAt, setScheduledAt] = useState('')
   const pollRef = useRef(null)
+  const qc = useQueryClient()
 
   const linkMatch = message.match(/https?:\/\/[^\s]+/)?.[0] || ''
 
@@ -162,6 +165,15 @@ function SendTab({ followers, groups, syncedAt }) {
       if (code === 'TOKEN_EXPIRED') toast.error('Token Zalo hết hạn — vào Followers tab để xem hướng dẫn')
       else toast.error(e.response?.data?.error || 'Lỗi gửi tin nhắn')
     },
+  })
+  const scheduleMut = useMutation({
+    mutationFn: (body) => api.post('/api/broadcast/schedule', body).then(r => r.data),
+    onSuccess: () => {
+      toast.success('Đã đặt lịch gửi — xem ở tab "Lịch hẹn"')
+      qc.invalidateQueries({ queryKey: ['broadcast-scheduled'] })
+      setScheduledAt('')
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi đặt lịch gửi'),
   })
 
   // Poll job status
@@ -241,16 +253,15 @@ function SendTab({ followers, groups, syncedAt }) {
     return ids
   }
 
-  async function handleSend() {
+  function buildContentPayload() {
     const userIds = buildRecipientList()
-    if (!userIds.length) return toast.error('Chưa nhập người nhận')
+    if (!userIds.length) { toast.error('Chưa nhập người nhận'); return null }
     const attachmentIds = imgPreviews.filter(p => p.id).map(p => p.id)
     const hasContent = message.trim() || attachmentIds.length
       || videoInfo?.articleToken || fileInfo?.attachmentId || linkMatch
-    if (!hasContent) return toast.error('Chưa có nội dung tin nhắn')
+    if (!hasContent) { toast.error('Chưa có nội dung tin nhắn'); return null }
 
-    setJob(null); setJobId(null)
-    sendMut.mutate({
+    return {
       userIds,
       message: message.trim() || undefined,
       attachmentIds: attachmentIds.length ? attachmentIds : undefined,
@@ -258,7 +269,22 @@ function SendTab({ followers, groups, syncedAt }) {
       fileAttachmentId: fileInfo?.attachmentId || undefined,
       adminNote: adminNote.trim() || undefined,
       linkUrl: linkMatch || undefined,
-    })
+    }
+  }
+
+  function handleSend() {
+    const payload = buildContentPayload()
+    if (!payload) return
+    setJob(null); setJobId(null)
+    sendMut.mutate(payload)
+  }
+
+  function handleSchedule() {
+    if (!scheduledAt) return toast.error('Chưa chọn thời điểm hẹn gửi')
+    if (new Date(scheduledAt) <= new Date()) return toast.error('Thời điểm hẹn gửi phải ở trong tương lai')
+    const payload = buildContentPayload()
+    if (!payload) return
+    scheduleMut.mutate({ ...payload, scheduledAt: new Date(scheduledAt).toISOString() })
   }
 
   function addFollowersToPicker() {
@@ -560,6 +586,25 @@ function SendTab({ followers, groups, syncedAt }) {
               : <><Send className="h-4 w-4" /> Gửi Tin Nhắn</>
             }
           </Button>
+
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-2">
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={e => setScheduledAt(e.target.value)}
+              className="flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-sm outline-none focus:border-emerald-400"
+            />
+            <Button
+              variant="outline"
+              className="gap-1.5 shrink-0"
+              onClick={handleSchedule}
+              disabled={scheduleMut.isPending}
+            >
+              {scheduleMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
+              Đặt lịch gửi
+            </Button>
+          </div>
+
           {job && (
             <div className="space-y-1.5">
               <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -672,6 +717,9 @@ function FollowersTab() {
     ) {
       importCatsMut.mutate()
     }
+    // importCatsMut bị bỏ qua có chủ đích: object mutation đổi identity mỗi render,
+    // thêm vào deps sẽ gây loop — điều kiện isPending/groupsData đã đủ để effect tự ổn định
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gLoading, groupsData, catsData])
 
   const followers = followersData?.followers || []
@@ -876,6 +924,93 @@ function FollowersTab() {
   )
 }
 
+// ── ScheduledTab ───────────────────────────────────────────────────────────────
+const SCHEDULED_STATUS = {
+  pending:   { label: 'Chờ gửi',  className: 'text-amber-700 bg-amber-50' },
+  sending:   { label: 'Đang gửi', className: 'text-sky-700 bg-sky-50' },
+  sent:      { label: 'Đã gửi',   className: 'text-green-700 bg-green-50' },
+  failed:    { label: 'Thất bại', className: 'text-red-700 bg-red-50' },
+  cancelled: { label: 'Đã hủy',   className: 'text-slate-500 bg-slate-100' },
+}
+
+function ScheduledTab() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['broadcast-scheduled'],
+    queryFn: () => api.get('/api/broadcast/scheduled').then(r => r.data),
+    refetchInterval: 15_000,
+  })
+
+  const cancelMut = useMutation({
+    mutationFn: (id) => api.delete(`/api/broadcast/scheduled/${id}`).then(r => r.data),
+    onSuccess: () => {
+      toast.success('Đã hủy lịch hẹn')
+      qc.invalidateQueries({ queryKey: ['broadcast-scheduled'] })
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi hủy lịch hẹn'),
+  })
+
+  const scheduled = data?.scheduled || []
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Lịch hẹn gửi tin</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['broadcast-scheduled'] })}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Tải lại
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
+        {!isLoading && scheduled.length === 0 && (
+          <p className="py-8 text-center text-slate-400">Chưa có lịch hẹn nào.</p>
+        )}
+        {!isLoading && scheduled.length > 0 && (
+          <div className="space-y-2">
+            {scheduled.map((sm) => {
+              const status = SCHEDULED_STATUS[sm.status] || SCHEDULED_STATUS.pending
+              const contentPreview = sm.message
+                || (sm.attachmentIds?.length ? `[${sm.attachmentIds.length} ảnh]` : '')
+                || (sm.videoAttachmentId ? '[video]' : '')
+                || (sm.fileAttachmentId ? '[file]' : '')
+                || (sm.linkUrl ? `[link] ${sm.linkUrl}` : '')
+              return (
+                <div key={sm._id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{contentPreview || '(không có nội dung)'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Hẹn gửi: {fmtTs(sm.scheduledAt)} · {sm.userIds?.length || 0} người nhận
+                      {sm.createdBy?.fullName && ` · bởi ${sm.createdBy.fullName}`}
+                    </p>
+                    {sm.status === 'sent' && (
+                      <p className="text-xs text-green-600 mt-0.5">{sm.result?.sent || 0} thành công{sm.result?.failed > 0 && `, ${sm.result.failed} thất bại`}</p>
+                    )}
+                  </div>
+                  <span className={cn('text-xs font-semibold px-2 py-1 rounded-full shrink-0', status.className)}>
+                    {status.label}
+                  </span>
+                  {sm.status === 'pending' && (
+                    <button
+                      onClick={() => cancelMut.mutate(sm._id)}
+                      disabled={cancelMut.isPending}
+                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                      title="Hủy lịch hẹn"
+                    >
+                      <Ban className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── LogsTab ────────────────────────────────────────────────────────────────────
 function LogsTab() {
   const qc = useQueryClient()
@@ -925,18 +1060,21 @@ function LogsTab() {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function MessagesPage() {
   const { user } = useAuth()
-  if (user?.role !== 'superadmin') return <Navigate to="/dashboard" replace />
-
+  const hasAccess = ['superadmin', 'dept_leader'].includes(user?.role)
   const [tab, setTab] = useState('send')
 
   const { data: followersData } = useQuery({
     queryKey: ['broadcast-followers'],
     queryFn: () => api.get('/api/broadcast/followers').then(r => r.data),
+    enabled: hasAccess,
   })
   const { data: groupsData } = useQuery({
     queryKey: ['broadcast-groups'],
     queryFn: () => api.get('/api/broadcast/groups').then(r => r.data),
+    enabled: hasAccess,
   })
+
+  if (!hasAccess) return <Navigate to="/dashboard" replace />
 
   return (
     <div className="space-y-6">
@@ -951,9 +1089,9 @@ export default function MessagesPage() {
         <SendTab
           followers={followersData?.followers}
           groups={groupsData?.groups}
-          syncedAt={followersData?.syncedAt}
         />
       )}
+      {tab === 'scheduled' && <ScheduledTab />}
       {tab === 'followers' && <FollowersTab />}
       {tab === 'logs' && <LogsTab />}
     </div>

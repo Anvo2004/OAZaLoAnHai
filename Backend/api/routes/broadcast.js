@@ -8,6 +8,7 @@ const { getStoredGroups, addGroup, removeGroup } = require('../../src/admin/grou
 const { sendToUsers, getJob } = require('../../src/admin/broadcastService')
 const { getLogs } = require('../../src/admin/logService')
 const { uploadImageToZalo, uploadFileToZalo, getZaloUserProfile } = require('../../src/utils/zaloApi')
+const ScheduledMessage = require('../../src/models/ScheduledMessage')
 
 const UPLOAD_DIR = path.join(__dirname, '../../public/images')
 
@@ -28,8 +29,8 @@ router.get('/debug-profile/:userId', async (req, res) => {
   }
 })
 
-// Tất cả endpoints bên dưới chỉ cho superadmin
-router.use(requireRole('superadmin'))
+// Tất cả endpoints bên dưới cho superadmin + dept_leader
+router.use(requireRole('superadmin', 'dept_leader'))
 
 // ── Seed profile cache từ Feedback MongoDB ─────────────────────────
 // Chạy 1 lần để có ngay tên của những người đã từng gửi phản ánh
@@ -266,6 +267,66 @@ router.get('/logs', async (req, res) => {
   const limit = parseInt(req.query.limit) || 50
   const logs = await getLogs(limit)
   res.json({ logs })
+})
+
+// ── Đặt lịch gửi ────────────────────────────────────────────────────
+router.post('/schedule', async (req, res) => {
+  try {
+    const { userIds, message, attachmentIds, videoAttachmentId, fileAttachmentId, adminNote, linkUrl, linkTitle, scheduledAt } = req.body
+    if (!userIds?.length) return res.status(400).json({ error: 'Cần danh sách userIds' })
+
+    const hasContent = message || attachmentIds?.length || videoAttachmentId || fileAttachmentId || linkUrl
+    if (!hasContent) return res.status(400).json({ error: 'Cần nội dung, ảnh, video, file hoặc link' })
+
+    const when = new Date(scheduledAt)
+    if (!scheduledAt || isNaN(when.getTime()) || when <= new Date()) {
+      return res.status(400).json({ error: 'Thời điểm hẹn gửi phải ở trong tương lai' })
+    }
+
+    const scheduled = await ScheduledMessage.create({
+      userIds,
+      message: message || '',
+      attachmentIds: attachmentIds || [],
+      videoAttachmentId: videoAttachmentId || '',
+      fileAttachmentId: fileAttachmentId || '',
+      adminNote: adminNote || '',
+      linkUrl: linkUrl || '',
+      linkTitle: linkTitle || '',
+      scheduledAt: when,
+      createdBy: req.user.id,
+    })
+    res.json({ ok: true, scheduled })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Danh sách lịch hẹn ───────────────────────────────────────────────
+router.get('/scheduled', async (req, res) => {
+  try {
+    const scheduled = await ScheduledMessage.find({})
+      .sort({ scheduledAt: -1 })
+      .limit(100)
+      .populate('createdBy', 'fullName')
+      .lean()
+    res.json({ scheduled })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Hủy lịch hẹn (chỉ khi chưa tới giờ gửi) ───────────────────────────
+router.delete('/scheduled/:id', async (req, res) => {
+  try {
+    const sm = await ScheduledMessage.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending' },
+      { status: 'cancelled' }
+    )
+    if (!sm) return res.status(400).json({ error: 'Lịch hẹn không tồn tại hoặc đã được gửi' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 module.exports = router

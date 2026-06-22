@@ -70,16 +70,20 @@ export default function Sidebar() {
           <NavItem to="/feedbacks"  icon={MessageSquare}   label="Góp ý & Phản ánh" />
         </div>
 
-        {/* Quản trị — chỉ superadmin */}
-        {user?.role === 'superadmin' && (
+        {/* Quản trị — superadmin (+ dept_leader cho riêng Gửi tin nhắn Zalo) */}
+        {(user?.role === 'superadmin' || user?.role === 'dept_leader') && (
           <>
             <p className="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-widest text-white/25 select-none">
               Quản trị
             </p>
             <div className="space-y-0.5">
-              <NavItem to="/users"    icon={Users}    label="Tài khoản Admin" />
-              <NavItem to="/settings" icon={Settings} label="Cài đặt nhóm Zalo" />
-              <NavItem to="/messages" icon={Send}     label="Gửi tin nhắn Zalo" />
+              {user?.role === 'superadmin' && (
+                <>
+                  <NavItem to="/users"    icon={Users}    label="Tài khoản Admin" />
+                  <NavItem to="/settings" icon={Settings} label="Cài đặt nhóm Zalo" />
+                </>
+              )}
+              <NavItem to="/messages" icon={Send} label="Gửi tin nhắn Zalo" />
             </div>
           </>
         )}

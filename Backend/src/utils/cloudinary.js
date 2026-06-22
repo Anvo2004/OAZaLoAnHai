@@ -38,4 +38,18 @@ async function uploadFromZaloImageUrl(zaloUrl) {
   return uploadFromBuffer(buffer, filename);
 }
 
-module.exports = { uploadFromUrl, uploadFromBuffer, uploadFromZaloImageUrl };
+// Upload Buffer với resource_type tuỳ chọn (image/video/raw) — dùng cho đính kèm nội bộ phân công/xử lý
+async function uploadBufferGeneric(buffer, publicId, resourceType = 'image') {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'anhai-task-attachments', resource_type: resourceType, public_id: publicId },
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result.secure_url);
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
+module.exports = { uploadFromUrl, uploadFromBuffer, uploadFromZaloImageUrl, uploadBufferGeneric };

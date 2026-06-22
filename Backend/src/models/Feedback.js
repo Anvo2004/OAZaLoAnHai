@@ -1,5 +1,15 @@
 const mongoose = require('mongoose');
 
+// Gói đính kèm nội bộ (ảnh/video/file + ghi chú) dùng chung cho tab Phân công & tab Xử lý
+const attachmentBundleSchema = new mongoose.Schema({
+  note:    { type: String, default: '' },
+  images:  [{ url: String, name: String }],
+  video:   { url: { type: String, default: '' }, name: { type: String, default: '' } },
+  file:    { url: { type: String, default: '' }, name: { type: String, default: '' } },
+  sentBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
+  sentAt:  { type: Date, default: null },
+}, { _id: false });
+
 const feedbackSchema = new mongoose.Schema({
   userId:         { type: String, required: true, index: true },
   displayName:    { type: String, default: '' },
@@ -14,6 +24,9 @@ const feedbackSchema = new mongoose.Schema({
   deadline:       { type: Date, default: null },
   assignedTo:     { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
   assignedBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
+  // Đính kèm nội bộ — tab Phân công (từ leader) & tab Xử lý (từ officer), ghi đè mỗi lần gửi lại
+  assignAttachments: { type: attachmentBundleSchema, default: () => ({}) },
+  draftAttachments:  { type: attachmentBundleSchema, default: () => ({}) },
   // Dự thảo
   draftResponse:  { type: String, default: '' },
   draftBy:        { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },

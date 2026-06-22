@@ -1,4 +1,6 @@
 const router = require('express').Router()
+const path = require('path')
+const multer = require('multer')
 const Feedback = require('../../src/models/Feedback')
 const AdminUser = require('../../src/models/AdminUser')
 const Category = require('../../src/models/Category')
@@ -7,6 +9,10 @@ const requireRole = require('../middleware/requireRole')
 const { sendZaloText, sendZaloToGroup } = require('../../src/utils/zaloApi')
 const { sendMail, buildFeedbackEmailHtml } = require('../../src/utils/mailer')
 const { getProfiles } = require('../../src/admin/profileCache')
+const { uploadBufferGeneric } = require('../../src/utils/cloudinary')
+const { notifyAssignment } = require('../../src/services/assignmentNotify')
+
+const memoryUpload = multer({ storage: multer.memoryStorage() })
 
 const LEADER_ROLES = ['superadmin', 'dept_leader']
 
@@ -95,6 +101,8 @@ router.get('/:id', async (req, res) => {
       .populate('draftBy', 'fullName')
       .populate('approvedBy', 'fullName')
       .populate('categoryId', 'name icon zaloGroupId')
+      .populate('assignAttachments.sentBy', 'fullName')
+      .populate('draftAttachments.sentBy', 'fullName')
       .lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
     if (!canAccessFeedback(req.user, feedback)) {
@@ -157,66 +165,98 @@ router.delete('/:id', requireRole('superadmin'), async (req, res) => {
   }
 })
 
+// ── Đính kèm nội bộ (Phân công / Xử lý) — upload lên Cloudinary, mở cho cả 3 quyền ──
+
+// POST /attachments/upload/image — tối đa 5 ảnh, 10MB/ảnh
+router.post('/attachments/upload/image', (req, res) => {
+  const upload = memoryUpload.array('images', 5)
+  upload(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message })
+    if (!req.files?.length) return res.status(400).json({ error: 'Không có file' })
+    if (req.files.some((f) => !f.mimetype.startsWith('image/'))) {
+      return res.status(400).json({ error: 'Chỉ nhận file ảnh' })
+    }
+    if (req.files.some((f) => f.size > 10 * 1024 * 1024)) {
+      return res.status(400).json({ error: 'Mỗi ảnh tối đa 10MB' })
+    }
+    try {
+      const images = await Promise.all(
+        req.files.map(async (f) => ({
+          url: await uploadBufferGeneric(f.buffer, `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, 'image'),
+          name: f.originalname,
+        }))
+      )
+      res.json({ ok: true, images })
+    } catch (e) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+})
+
+// POST /attachments/upload/video — 1 video, tối đa 100MB
+router.post('/attachments/upload/video', (req, res) => {
+  const upload = memoryUpload.single('video')
+  upload(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message })
+    if (!req.file) return res.status(400).json({ error: 'Không có file video' })
+    if (req.file.size > 100 * 1024 * 1024) return res.status(400).json({ error: 'Video tối đa 100MB' })
+    try {
+      const url = await uploadBufferGeneric(req.file.buffer, `task_${Date.now()}`, 'video')
+      res.json({ ok: true, url, name: req.file.originalname })
+    } catch (e) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+})
+
+// POST /attachments/upload/file — 1 file .docx/.pdf/.xlsx/.xls, tối đa 20MB
+router.post('/attachments/upload/file', (req, res) => {
+  const ALLOWED_EXT = ['.docx', '.pdf', '.xlsx', '.xls']
+  const upload = memoryUpload.single('file')
+  upload(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message })
+    if (!req.file) return res.status(400).json({ error: 'Không có file' })
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!ALLOWED_EXT.includes(ext)) return res.status(400).json({ error: 'Chỉ nhận file .docx, .pdf, .xlsx, .xls' })
+    if (req.file.size > 20 * 1024 * 1024) return res.status(400).json({ error: 'File tối đa 20MB' })
+    try {
+      const safeName = `task_${Date.now()}_${req.file.originalname.replace(/[^\w.-]/g, '_')}`
+      const url = await uploadBufferGeneric(req.file.buffer, safeName, 'raw')
+      res.json({ ok: true, url, name: req.file.originalname })
+    } catch (e) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+})
+
 // POST /:id/assign — phân công (superadmin, dept_leader)
 router.post('/:id/assign', requireRole('superadmin', 'dept_leader'), async (req, res) => {
   try {
-    const { assignedTo } = req.body
+    const { assignedTo, note, images, video, file } = req.body
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
     if (!feedback) return res.status(404).json({ error: 'Không tìm thấy góp ý' })
     if (!canAccessFeedback(req.user, feedback)) {
       return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
     }
 
+    const hasAttachments = !!(note?.trim() || images?.length || video?.url || file?.url)
     await Feedback.findByIdAndUpdate(req.params.id, {
       assignedTo: assignedTo || null,
       assignedBy: req.user.id,
+      assignAttachments: {
+        note: note?.trim() || '',
+        images: images || [],
+        video: video?.url ? video : { url: '', name: '' },
+        file: file?.url ? file : { url: '', name: '' },
+        sentBy: req.user.id,
+        sentAt: new Date(),
+      },
       updatedAt: new Date(),
     })
 
-    // Thông báo vào nhóm Zalo kèm @mention cán bộ
+    // Thông báo cho cán bộ được phân công (chuông app + email + @mention nhóm Zalo)
     if (assignedTo) {
-      const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId email').lean()
-      const catName = feedback.categoryId?.name || ''
-      const groupId = feedback.categoryId?.zaloGroupId
-      const shortCode = feedback._id.toString().slice(-5).toUpperCase()
-
-      // Thông báo trong app + email cho cán bộ được phân công
-      await Notification.create({
-        userId: assignedTo,
-        type: 'assigned',
-        feedbackId: feedback._id,
-        message: `Bạn được phân công xử lý phản ánh #${shortCode}`,
-      })
-      if (officer?.email) {
-        await sendMail({
-          to: officer.email,
-          subject: `[UBND An Hải] Phân công xử lý phản ánh #${shortCode}`,
-          html: buildFeedbackEmailHtml({ heading: 'Bạn được phân công xử lý phản ánh mới', feedback, shortCode }),
-        })
-      }
-      const mentionTag = `@${officer?.fullName || assignedTo}`
-      const msg =
-        `📋 PHÂN CÔNG XỬ LÝ PHẢN ÁNH\n` +
-        `${'─'.repeat(28)}\n` +
-        `👤 Cán bộ: ${mentionTag}\n` +
-        `🏷️ Loại: ${catName}\n` +
-        `🆔 Mã: #${shortCode}\n` +
-        `📝 Nội dung: ${feedback.content.slice(0, 80)}...`
-
-      // Nếu cán bộ có zaloUserId thì gửi @mention thật trong nhóm Zalo
-      const mentions = []
-      if (officer?.zaloUserId) {
-        const pos = msg.indexOf(mentionTag)
-        if (pos !== -1) {
-          mentions.push({
-            user_id: officer.zaloUserId,
-            display_name: officer.fullName || '',
-            pos,
-            len: mentionTag.length,
-          })
-        }
-      }
-      await sendZaloToGroup(msg, groupId, mentions)
+      await notifyAssignment(feedback, assignedTo, { hasAttachments })
     }
 
     res.json({ ok: true })
@@ -228,7 +268,7 @@ router.post('/:id/assign', requireRole('superadmin', 'dept_leader'), async (req,
 // POST /:id/draft — cán bộ soạn dự thảo trả lời
 router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
   try {
-    const { draftResponse } = req.body
+    const { draftResponse, note, images, video, file } = req.body
     if (!draftResponse?.trim()) return res.status(400).json({ error: 'Vui lòng nhập nội dung dự thảo' })
 
     const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean()
@@ -240,11 +280,20 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
       return res.status(400).json({ error: 'Phản ánh đã được giải quyết, không thể sửa dự thảo' })
     }
 
+    const hasAttachments = !!(note?.trim() || images?.length || video?.url || file?.url)
     await Feedback.findByIdAndUpdate(req.params.id, {
       draftResponse: draftResponse.trim(),
       draftBy: req.user.id,
       draftAt: new Date(),
       status: 'draft',
+      draftAttachments: {
+        note: note?.trim() || '',
+        images: images || [],
+        video: video?.url ? video : { url: '', name: '' },
+        file: file?.url ? file : { url: '', name: '' },
+        sentBy: req.user.id,
+        sentAt: new Date(),
+      },
       updatedAt: new Date(),
     })
 
@@ -257,7 +306,8 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
       `🆔 Mã: #${shortCode}\n` +
       `🏷️ Loại: ${feedback.categoryId?.name || ''}\n` +
       `✍️ Nội dung dự thảo:\n${draftResponse.trim().slice(0, 150)}\n` +
-      `(Vui lòng vào hệ thống để duyệt)`
+      `(Vui lòng vào hệ thống để duyệt)` +
+      (hasAttachments ? `\n📎 Có tệp đính kèm — xem trên hệ thống` : '')
     await sendZaloToGroup(msg, groupId)
 
     // Thông báo trong app + email cho lãnh đạo phòng quản lý loại phản ánh này

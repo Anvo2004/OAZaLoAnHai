@@ -3,6 +3,7 @@ const Feedback = require('../../src/models/Feedback');
 const AdminUser = require('../../src/models/AdminUser');
 const requireRole = require('../middleware/requireRole');
 const { sendZaloText } = require('../../src/utils/zaloApi');
+const { notifyAssignment } = require('../../src/services/assignmentNotify');
 
 // GET / — danh sách với filter & phân trang
 router.get('/', async (req, res) => {
@@ -132,10 +133,19 @@ router.post('/:id/reply', async (req, res) => {
 router.post('/:id/assign', async (req, res) => {
   try {
     const { assignedTo } = req.body;
+    const feedback = await Feedback.findById(req.params.id).populate('categoryId', 'name zaloGroupId').lean();
+    if (!feedback) {
+      req.flash('error', 'Không tìm thấy góp ý');
+      return res.redirect('/admin/feedbacks');
+    }
     await Feedback.findByIdAndUpdate(req.params.id, {
       assignedTo: assignedTo || null,
+      assignedBy: req.session.adminUser.id,
       updatedAt: new Date(),
     });
+    // Thông báo cho cán bộ được phân công (chuông app + email + @mention nhóm Zalo) —
+    // trước đây route này không gửi thông báo gì, khiến cán bộ phân công qua panel admin bị im lặng
+    if (assignedTo) await notifyAssignment(feedback, assignedTo);
     req.flash('success', 'Đã cập nhật phân công');
     res.redirect(`/admin/feedbacks/${req.params.id}`);
   } catch (err) {

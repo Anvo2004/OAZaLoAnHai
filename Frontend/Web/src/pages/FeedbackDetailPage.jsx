@@ -12,8 +12,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import StatusBadge from '@/components/feedback/StatusBadge'
-import { formatDate } from '@/lib/utils'
+import ImageGallery from '@/components/feedback/ImageGallery'
+import AttachmentComposer from '@/components/feedback/AttachmentComposer'
+import AttachmentViewer from '@/components/feedback/AttachmentViewer'
+import { formatDate, cn } from '@/lib/utils'
 import { toast } from 'sonner'
+
+const EMPTY_ATTACH = { note: '', images: [], video: { url: '', name: '' }, file: { url: '', name: '' } }
 
 export default function FeedbackDetailPage() {
   const { id } = useParams()
@@ -26,6 +31,9 @@ export default function FeedbackDetailPage() {
   const [assignedTo, setAssignedTo] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [notifyAdmin, setNotifyAdmin] = useState(false)
+  const [assignAttach, setAssignAttach] = useState(EMPTY_ATTACH)
+  const [draftAttach, setDraftAttach] = useState(EMPTY_ATTACH)
+  const [internalTab, setInternalTab] = useState('assign')
 
   const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
   const isOfficer = user?.role === 'officer' || user?.role === 'staff'
@@ -41,6 +49,18 @@ export default function FeedbackDetailPage() {
       setNote(fb.note || '')
       setAssignedTo(fb.assignedTo?._id || '')
       setDraftText(fb.draftResponse || '')
+      setAssignAttach({
+        note: fb.assignAttachments?.note || '',
+        images: fb.assignAttachments?.images || [],
+        video: fb.assignAttachments?.video || { url: '', name: '' },
+        file: fb.assignAttachments?.file || { url: '', name: '' },
+      })
+      setDraftAttach({
+        note: fb.draftAttachments?.note || '',
+        images: fb.draftAttachments?.images || [],
+        video: fb.draftAttachments?.video || { url: '', name: '' },
+        file: fb.draftAttachments?.file || { url: '', name: '' },
+      })
     }
   }, [data])
 
@@ -57,13 +77,13 @@ export default function FeedbackDetailPage() {
   })
 
   const assignMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/assign`, { assignedTo }).then((r) => r.data),
+    mutationFn: () => api.post(`/api/feedbacks/${id}/assign`, { assignedTo, ...assignAttach }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã cập nhật phân công'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi phân công'),
   })
 
   const draftMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/draft`, { draftResponse: draftText }).then((r) => r.data),
+    mutationFn: () => api.post(`/api/feedbacks/${id}/draft`, { draftResponse: draftText, ...draftAttach }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã gửi dự thảo, chờ lãnh đạo duyệt'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi gửi dự thảo'),
   })
@@ -177,21 +197,42 @@ export default function FeedbackDetailPage() {
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                       Hình ảnh đính kèm ({imgs.length})
                     </p>
-                    <div className={`grid gap-2 ${imgs.length === 1 ? 'grid-cols-1' : imgs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                      {imgs.map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border bg-slate-50 hover:opacity-90 transition-opacity">
-                          <img
-                            src={url}
-                            alt={`Ảnh ${i + 1}`}
-                            className="w-full object-cover cursor-zoom-in"
-                            style={{ maxHeight: imgs.length === 1 ? '256px' : '160px' }}
-                          />
-                        </a>
-                      ))}
-                    </div>
+                    <ImageGallery images={imgs} />
                   </div>
                 ) : null
               })()}
+            </CardContent>
+          </Card>
+
+          {/* Trao đổi nội bộ — đính kèm Phân công & Xử lý */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">📎 Trao đổi nội bộ</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+                {[
+                  { id: 'assign', label: 'Phân công' },
+                  { id: 'draft', label: 'Xử lý' },
+                ].map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setInternalTab(id)}
+                    className={cn(
+                      'flex-1 rounded-lg py-1.5 text-sm font-medium transition-all',
+                      internalTab === id ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {internalTab === 'assign' ? (
+                <AttachmentViewer data={fb.assignAttachments} emptyLabel="Chưa có đính kèm phân công." />
+              ) : (
+                <AttachmentViewer data={fb.draftAttachments} emptyLabel="Chưa có đính kèm xử lý." />
+              )}
             </CardContent>
           </Card>
 
@@ -272,6 +313,10 @@ export default function FeedbackDetailPage() {
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                 />
+                <div className="border-t pt-3">
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm thêm thông tin xử lý (nội bộ, không gửi dân):</p>
+                  <AttachmentComposer value={draftAttach} onChange={setDraftAttach} disabled={draftMutation.isPending} />
+                </div>
                 <Button
                   className="w-full bg-sky-600 hover:bg-sky-700 text-white"
                   onClick={() => {
@@ -378,6 +423,10 @@ export default function FeedbackDetailPage() {
                     <option key={a._id} value={a._id}>{a.fullName} (@{a.username})</option>
                   ))}
                 </select>
+                <div className="border-t pt-3">
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm thêm thông tin cho cán bộ xử lý:</p>
+                  <AttachmentComposer value={assignAttach} onChange={setAssignAttach} disabled={assignMutation.isPending} />
+                </div>
                 <Button variant="secondary" className="w-full" onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>
                   {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Cập nhật phân công
