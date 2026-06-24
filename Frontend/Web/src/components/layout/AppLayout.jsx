@@ -92,7 +92,7 @@ export default function AppLayout() {
                 <div className="hidden sm:block leading-tight">
                   <p className="text-white text-xs font-semibold">{user?.fullName}</p>
                   <p className="text-emerald-100/70 text-[10px]">
-                    {user?.role === 'superadmin' ? 'Quản trị viên' : 'Nhân viên'}
+                    {user?.role === 'superadmin' ? 'Admin' : 'Nhân viên'}
                   </p>
                 </div>
               </div>

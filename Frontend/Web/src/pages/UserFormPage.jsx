@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 const ROLE_OPTIONS = [
   { value: 'officer',     label: 'Cán bộ phụ trách' },
   { value: 'dept_leader', label: 'Lãnh đạo phòng' },
-  { value: 'superadmin',  label: 'Lãnh đạo Ủy ban (Quản trị)' },
+  { value: 'superadmin',  label: 'Admin' },
 ]
 
 export default function UserFormPage() {

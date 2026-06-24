@@ -136,9 +136,10 @@ export default function GlobeHero() {
         backRef.current.style.opacity = '1'
         backRef.current.style.pointerEvents = 'auto'
       }
-      // Khởi tạo Leaflet, sau đó invalidateSize để render đúng kích thước
+      // Khởi tạo Leaflet trước khi fade-in để container đã có kích thước đúng
       initLeaflet()
-      setTimeout(() => leafletEl.current?.invalidateSize(), 200)
+      // invalidateSize sau khi fade-in (1.2s transition) hoàn tất
+      setTimeout(() => leafletEl.current?.invalidateSize(), 1400)
     }, 3300)
   }, [initLeaflet])
 
@@ -213,8 +214,8 @@ export default function GlobeHero() {
         className="absolute inset-0 z-[1]"
         style={{ opacity: 0, pointerEvents: 'none', transition: 'opacity 1.2s ease' }}
       >
-        {/* Div container cho Leaflet */}
-        <div ref={mapDivRef} className="absolute inset-0" />
+        {/* Div container cho Leaflet — dùng inline style để đảm bảo height đúng */}
+        <div ref={mapDivRef} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} />
 
         {/* Ô thông tin — góc trên trái, dịch xuống để không đè lên nút Leaflet */}
         <div style={{

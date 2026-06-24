@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const ROLE_LABELS = {
-  superadmin:  'Lãnh đạo Ủy ban',
+  superadmin:  'Admin',
   dept_leader: 'Lãnh đạo phòng',
   officer:     'Cán bộ phụ trách',
   staff:       'Nhân viên',
