@@ -9,16 +9,35 @@ const { setState, getState, clearState } = require('./chatState');
 const MAX_IMAGES = 5;
 const BATCH_DELAY_MS = 3000; // Chờ 3s để gộp ảnh gửi cùng lúc (Zalo có thể giao event chậm)
 
+// Bounding box phường An Hải (lấy từ ranh giới OSM thực tế trong an-hai-boundary.json)
+// Format Nominatim viewbox: left,top,right,bottom = min_lng,max_lat,max_lng,min_lat
+const AN_HAI_VIEWBOX = '108.2194,16.0889,108.2479,16.0478';
+
 // Geocode địa chỉ tay → lat/lng bằng Nominatim (OpenStreetMap, miễn phí)
+// Lưu ý: sau cải cách hành chính, Đà Nẵng không còn cấp quận/huyện (vd "Sơn Trà"),
+// nên KHÔNG gắn cứng tên quận/phường vào query — dùng viewbox để ưu tiên kết quả trong An Hải.
 async function geocodeAddress(address) {
+  const axios = require('axios');
+  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' };
+  const query = `${address}, Đà Nẵng, Việt Nam`;
+
   try {
-    const axios = require('axios');
-    const query = `${address}, An Hải, Sơn Trà, Đà Nẵng, Việt Nam`;
-    const res = await axios.get('https://nominatim.openstreetmap.org/search', {
-      params: { q: query, format: 'json', limit: 1, countrycodes: 'vn' },
-      headers: { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' },
+    // Ưu tiên kết quả nằm trong phạm vi An Hải
+    let res = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: { q: query, format: 'json', limit: 1, countrycodes: 'vn', viewbox: AN_HAI_VIEWBOX, bounded: 1 },
+      headers,
       timeout: 5000,
     });
+
+    if (!res.data?.length) {
+      // Fallback: tìm rộng khắp Đà Nẵng nếu không có trong An Hải
+      res = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: { q: query, format: 'json', limit: 1, countrycodes: 'vn' },
+        headers,
+        timeout: 5000,
+      });
+    }
+
     if (res.data && res.data.length > 0) {
       return { lat: Number(res.data[0].lat), lng: Number(res.data[0].lon) };
     }
@@ -465,4 +484,4 @@ function isFeedbackTrigger(text) {
   );
 }
 
-module.exports = { startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger };
+module.exports = { startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger, geocodeAddress };

@@ -165,6 +165,33 @@ router.delete('/:id', requireRole('superadmin'), async (req, res) => {
   }
 })
 
+// POST /backfill-geocode — geocode lại các hồ sơ cũ có địa chỉ text nhưng chưa có lat/lng (superadmin)
+router.post('/backfill-geocode', requireRole('superadmin'), async (req, res) => {
+  try {
+    const { geocodeAddress } = require('../../src/services/feedbackService')
+    const targets = await Feedback.find({
+      status: { $nin: ['resolved', 'done'] },
+      'location.address': { $exists: true, $nin: [null, ''] },
+      'location.lat': null,
+    })
+
+    const results = []
+    for (const fb of targets) {
+      const geo = await geocodeAddress(fb.location.address)
+      if (geo) {
+        fb.location.lat = geo.lat
+        fb.location.lng = geo.lng
+        await fb.save()
+      }
+      results.push({ id: fb._id.toString().slice(-5).toUpperCase(), address: fb.location.address, geocoded: !!geo })
+    }
+
+    res.json({ ok: true, total: targets.length, results })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // ── Đính kèm nội bộ (Phân công / Xử lý) — upload lên Cloudinary, mở cho cả 3 quyền ──
 
 // POST /attachments/upload/image — tối đa 5 ảnh, 10MB/ảnh
