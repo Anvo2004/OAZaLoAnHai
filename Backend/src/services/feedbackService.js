@@ -9,6 +9,25 @@ const { setState, getState, clearState } = require('./chatState');
 const MAX_IMAGES = 5;
 const BATCH_DELAY_MS = 3000; // Chờ 3s để gộp ảnh gửi cùng lúc (Zalo có thể giao event chậm)
 
+// Geocode địa chỉ tay → lat/lng bằng Nominatim (OpenStreetMap, miễn phí)
+async function geocodeAddress(address) {
+  try {
+    const axios = require('axios');
+    const query = `${address}, An Hải, Sơn Trà, Đà Nẵng, Việt Nam`;
+    const res = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: { q: query, format: 'json', limit: 1, countrycodes: 'vn' },
+      headers: { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' },
+      timeout: 5000,
+    });
+    if (res.data && res.data.length > 0) {
+      return { lat: Number(res.data[0].lat), lng: Number(res.data[0].lon) };
+    }
+  } catch (err) {
+    console.error('[Geocode] Lỗi geocode địa chỉ:', err.message);
+  }
+  return null;
+}
+
 // Buffer gộp ảnh: { userId → { urls: [], timer } }
 const imageBatchBuffer = new Map();
 
@@ -176,14 +195,16 @@ async function handleText(userId, text, displayName) {
       await sendImagePrompt(userId, 0);
       return;
     }
-    // Người dùng nhập tay địa chỉ
+    // Người dùng nhập tay địa chỉ — tự động geocode để lấy tọa độ hiển thị trên bản đồ
+    const addr = text.trim();
+    const geo = await geocodeAddress(addr);
     setState(userId, {
       ...state,
       step: 'waiting_image',
-      location: { address: text.trim(), lat: null, lng: null },
+      location: { address: addr, lat: geo?.lat ?? null, lng: geo?.lng ?? null },
       imageUrls: [],
     });
-    await sendZaloText(userId, `✅ Đã ghi nhận địa chỉ: ${text.trim()}`);
+    await sendZaloText(userId, `✅ Đã ghi nhận địa chỉ: ${addr}`);
     await sendImagePrompt(userId, 0);
     return;
   }
