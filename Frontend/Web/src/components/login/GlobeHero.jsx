@@ -27,10 +27,16 @@ const STATUS_LABEL = { pending: 'Đang chờ xử lý', draft: 'Đang soạn th�
 function createDotIcon(color) {
   return L.divIcon({
     className: '',
-    html: `<div style="width:13px;height:13px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45)"></div>`,
-    iconSize: [13, 13],
-    iconAnchor: [6, 6],
-    popupAnchor: [0, -10],
+    html: `
+      <div style="position:relative;width:26px;height:26px;display:flex;align-items:center;justify-content:center">
+        <div style="position:absolute;width:26px;height:26px;border-radius:50%;background:${color};opacity:.25;animation:anhai-pulse 1.8s ease-out infinite"></div>
+        <div style="width:14px;height:14px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+      </div>
+      <style>@keyframes anhai-pulse{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.6);opacity:0}}</style>
+    `,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -16],
   })
 }
 
