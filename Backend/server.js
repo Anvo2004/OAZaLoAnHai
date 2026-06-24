@@ -230,7 +230,6 @@ function go(){
     {enableHighAccuracy:true,timeout:15000,maximumAge:0}
   );
 }
-window.addEventListener('load',()=>setTimeout(go,400));
 </script>
 </body></html>`);
 });
