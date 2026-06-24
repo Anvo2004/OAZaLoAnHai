@@ -85,6 +85,40 @@ async function uploadFileToZalo(filepath, originalFilename) {
   return token;
 }
 
+// Gửi message với nút bấm mở URL (dùng cho mini web page chia sẻ vị trí)
+async function sendZaloLinkButton(userId, title, subtitle, buttonLabel, url) {
+  try {
+    const res = await zaloPost('https://openapi.zalo.me/v2.0/oa/message', {
+      recipient: { user_id: String(userId) },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'list',
+            elements: [{
+              title,
+              subtitle,
+              default_action: { type: 'oa.open.url', url },
+            }],
+            buttons: [{
+              title: buttonLabel,
+              type: 'oa.open.url',
+              payload: { url },
+            }],
+          },
+        },
+      },
+    });
+    if (res.data?.error !== 0) {
+      console.warn('[Zalo] sendZaloLinkButton error, fallback text:', res.data);
+      await sendZaloText(userId, `${title}\n${subtitle}\n👉 ${url}`);
+    }
+  } catch (err) {
+    console.error('[Zalo] sendZaloLinkButton thất bại:', err.message);
+    await sendZaloText(userId, `${title}\n${subtitle}\n👉 ${url}`);
+  }
+}
+
 async function sendZaloButtons(userId, text, buttons) {
   const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
   const btnLabels = buttons.map((b, i) => `${numbers[i]} ${b.title}`).join('\n');
@@ -371,6 +405,7 @@ async function deleteZaloGroup(groupId) {
 
 module.exports = {
   sendZaloText,
+  sendZaloLinkButton,
   sendZaloTextToGroup,
   sendZaloButtons,
   sendZaloToGroup,

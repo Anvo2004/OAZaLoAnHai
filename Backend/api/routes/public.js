@@ -32,4 +32,20 @@ router.get('/map-markers', async (req, res) => {
   }
 })
 
+// POST /api/public/location-submit — nhận tọa độ GPS từ mini web page
+router.post('/location-submit', async (req, res) => {
+  try {
+    const { uid, lat, lng } = req.body
+    if (!uid || lat == null || lng == null) {
+      return res.status(400).json({ ok: false, message: 'Thiếu uid/lat/lng' })
+    }
+    const { handleLocation } = require('../../src/services/feedbackService')
+    await handleLocation(String(uid), { lat: Number(lat), lng: Number(lng), address: '' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[LocationSubmit]', err.message)
+    res.status(500).json({ ok: false, message: err.message })
+  }
+})
+
 module.exports = router

@@ -1,4 +1,5 @@
-const { sendZaloText, sendZaloButtons, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloButtons, sendZaloLinkButton, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
+const CONFIG = require('../config');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const { saveProfile } = require('../admin/profileCache');
 const Feedback = require('../models/Feedback');
@@ -53,13 +54,25 @@ async function sendCategoryMenu(userId) {
 }
 
 async function sendLocationPrompt(userId) {
-  await sendZaloText(userId,
-    '📍 Vui lòng cung cấp địa chỉ / vị trí phản ánh:\n\n' +
-    '• Gõ địa chỉ cụ thể (VD: 123 Nguyễn Văn A, phường An Hải)\n' +
-    '• Hoặc chia sẻ vị trí GPS từ điện thoại bằng nút đính kèm 📎\n\n' +
-    '1️⃣ Bỏ qua — không cung cấp địa chỉ\n\n' +
-    '(Nhắn "huỷ" để thoát)'
-  );
+  const publicUrl = CONFIG.PUBLIC_URL;
+  if (publicUrl) {
+    const url = `${publicUrl}/location?uid=${userId}`;
+    await sendZaloLinkButton(
+      userId,
+      '📍 Cung cấp vị trí phản ánh',
+      'Nhấn nút để tự động lấy vị trí GPS — hoặc gõ địa chỉ tay — hoặc nhắn "1" để bỏ qua.',
+      '📡 Lấy vị trí GPS tự động',
+      url,
+    );
+  } else {
+    await sendZaloText(userId,
+      '📍 Vui lòng cung cấp địa chỉ / vị trí phản ánh:\n\n' +
+      '• Gõ địa chỉ cụ thể (VD: 123 Nguyễn Văn A, phường An Hải)\n' +
+      '• Hoặc chia sẻ vị trí GPS từ điện thoại bằng nút đính kèm 📎\n\n' +
+      '1️⃣ Bỏ qua — không cung cấp địa chỉ\n\n' +
+      '(Nhắn "huỷ" để thoát)'
+    );
+  }
 }
 
 async function sendImagePrompt(userId, currentCount) {
