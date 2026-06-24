@@ -10,11 +10,18 @@ const attachmentBundleSchema = new mongoose.Schema({
   sentAt:  { type: Date, default: null },
 }, { _id: false });
 
+const locationSchema = new mongoose.Schema({
+  address: { type: String, default: '' },
+  lat:     { type: Number, default: null },
+  lng:     { type: Number, default: null },
+}, { _id: false });
+
 const feedbackSchema = new mongoose.Schema({
   userId:         { type: String, required: true, index: true },
   displayName:    { type: String, default: '' },
   contact:        { type: String, required: true },
   content:        { type: String, required: true },
+  location:       { type: locationSchema, default: () => ({}) },
   imageUrl:       { type: String, default: '' },
   imageUrls:      [{ type: String }],
   categoryId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
@@ -22,6 +29,7 @@ const feedbackSchema = new mongoose.Schema({
   status:         { type: String, enum: ['pending', 'draft', 'resolved', 'processing', 'done'], default: 'pending' },
   createdAt:      { type: Date, default: Date.now },
   deadline:       { type: Date, default: null },
+  lastReminderSentAt: { type: Date, default: null },
   assignedTo:     { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
   assignedBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },
   // Đính kèm nội bộ — tab Phân công (từ leader) & tab Xử lý (từ officer), ghi đè mỗi lần gửi lại

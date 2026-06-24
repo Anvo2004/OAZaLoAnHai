@@ -1,6 +1,6 @@
 const AdminUser = require('../models/AdminUser')
 const Notification = require('../models/Notification')
-const { sendZaloToGroup } = require('../utils/zaloApi')
+const { sendZaloToGroup, sendZaloText } = require('../utils/zaloApi')
 const { sendMail, buildFeedbackEmailHtml } = require('../utils/mailer')
 
 // Thông báo cho cán bộ được phân công (chuông app + email + @mention nhóm Zalo).
@@ -51,6 +51,24 @@ async function notifyAssignment(feedback, assignedTo, { hasAttachments = false }
     }
   }
   await sendZaloToGroup(msg, groupId, mentions)
+
+  // Gửi tin nhắn trực tiếp đến Zalo cá nhân của cán bộ được phân công
+  if (officer?.zaloUserId) {
+    const deadline = feedback.deadline ? new Date(feedback.deadline) : null
+    const deadlineStr = deadline
+      ? deadline.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      : 'Chưa xác định'
+    const personalMsg =
+      `🔔 BẠN VỪA ĐƯỢC PHÂN CÔNG HỒ SƠ MỚI!\n` +
+      `${'─'.repeat(28)}\n` +
+      `🆔 Mã phản ánh: #${shortCode}\n` +
+      `📂 Loại: ${catName}\n` +
+      `📝 Nội dung: ${feedback.content.slice(0, 80)}${feedback.content.length > 80 ? '...' : ''}\n` +
+      `📅 Hạn xử lý: ${deadlineStr}\n` +
+      (hasAttachments ? `📎 Có tệp đính kèm — xem trên hệ thống\n` : '') +
+      `\nVui lòng đăng nhập để xử lý kịp thời.`
+    await sendZaloText(officer.zaloUserId, personalMsg)
+  }
 }
 
 module.exports = { notifyAssignment }

@@ -84,6 +84,7 @@ mongoose.connect(CONFIG.MONGO_URI)
 
     require('./src/services/groupSyncService').startGroupSyncSchedule();
     require('./src/admin/scheduledMessageService').startScheduledMessageRunner();
+    require('./src/services/deadlineReminderService').startDeadlineReminder();
   })
   .catch(err => console.error('[MongoDB] Lỗi kết nối:', err.message));
 

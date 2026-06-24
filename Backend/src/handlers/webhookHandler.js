@@ -4,6 +4,7 @@ const {
   handleText,
   handleImage,
   handleContactCard,
+  handleLocation,
   isFeedbackTrigger,
 } = require('../services/feedbackService');
 const {
@@ -103,6 +104,18 @@ async function handleWebhook(body) {
     return;
   }
 
+  // User chia sẻ vị trí GPS
+  if (eventName === 'user_send_location') {
+    const loc = body.message?.location || body.message?.attachments?.[0]?.payload || {};
+    const lat = loc.lat ?? loc.latitude;
+    const lng = loc.long ?? loc.lng ?? loc.longitude;
+    const address = loc.address || loc.name || '';
+    if (lat != null && lng != null) {
+      await handleLocation(userId, { lat: Number(lat), lng: Number(lng), address });
+    }
+    return;
+  }
+
   // User gửi text
   if (eventName === 'user_send_text') {
     const text = (body.message?.text || '').trim();
@@ -116,6 +129,19 @@ async function handleWebhook(body) {
       const contactName = contactAttachment.payload?.name || contactAttachment.payload?.display_name || displayName;
       if (phone) {
         await handleContactCard(userId, phone, contactName);
+        return;
+      }
+    }
+
+    // Kiểm tra location attachment trong user_send_text
+    const locationAttachment = attachments.find(a => a.type === 'location');
+    if (locationAttachment) {
+      const p = locationAttachment.payload || {};
+      const lat = p.lat ?? p.latitude;
+      const lng = p.long ?? p.lng ?? p.longitude;
+      const address = p.address || p.name || '';
+      if (lat != null && lng != null) {
+        await handleLocation(userId, { lat: Number(lat), lng: Number(lng), address });
         return;
       }
     }

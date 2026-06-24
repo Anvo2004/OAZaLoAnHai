@@ -9,7 +9,15 @@ const CANCEL_WORDS = ['huỷ', 'hủy', 'huy', 'cancel', 'thoát', 'thoat'];
 function isLookupTrigger(text) {
   const lower = text.toLowerCase().trim();
   return (
+    lower === '#tracuuhoso' ||
     lower === '#tracuugoopy' ||
+    lower === '#theodoi' ||
+    lower.includes('tra cứu hồ sơ') ||
+    lower.includes('tra cuu ho so') ||
+    lower.includes('theo dõi phản ánh') ||
+    lower.includes('theo doi phan anh') ||
+    lower.includes('theo dõi hồ sơ') ||
+    lower.includes('theo doi ho so') ||
     lower.includes('tra cứu góp ý') ||
     lower.includes('tra cuu gop y') ||
     lower.includes('tra cứu phản ánh') ||
@@ -31,6 +39,34 @@ function isResolved(fb) {
 
 function statusLine(fb) {
   return isResolved(fb) ? '✅ Đã xử lý xong' : '🕐 Đang xử lý';
+}
+
+function progressBar(fb) {
+  // Stage 1: luôn hoàn thành (đã gởi hồ sơ)
+  const s1 = true;
+  // Stage 2: đã được phân công
+  const s2 = !!(fb.assignedTo || fb.status === 'draft' || isResolved(fb));
+  // Stage 3: cán bộ đã nộp dự thảo chờ duyệt
+  const s3 = fb.status === 'draft' || isResolved(fb);
+  // Stage 4: đã duyệt và gởi hoàn tất
+  const s4 = isResolved(fb);
+
+  const mark = (done) => done ? '✅' : '⬜';
+  const stages = [
+    `${mark(s1)} 1. Đã gởi hồ sơ`,
+    `${mark(s2)} 2. Đang xử lý`,
+    `${mark(s3)} 3. Đã duyệt`,
+    `${mark(s4)} 4. Đã gởi hoàn tất hồ sơ`,
+  ];
+
+  // Xác định bước hiện tại
+  let current = 1;
+  if (s4) current = 4;
+  else if (s3) current = 3;
+  else if (s2) current = 2;
+  const labels = stages.map((s, i) => i + 1 === current && !s4 ? s + ' ⏳' : s);
+
+  return '📊 TIẾN TRÌNH XỬ LÝ\n' + labels.join('\n');
 }
 
 function formatDate(date) {
@@ -74,16 +110,26 @@ async function startLookup(userId) {
 
 async function replyDetail(userId, fb) {
   const catName = fb.categoryId?.name || 'Chưa rõ';
+  const locationLine = fb.location?.address ? `📍 Địa chỉ: ${fb.location.address}\n` : '';
+
+  // Phần 1: Thông tin hồ sơ
   let msg =
-    `📄 Phản ánh #${shortCode(fb)}\n` +
+    `━━━━━━ THÔNG TIN HỒ SƠ ━━━━━━\n` +
+    `🆔 Mã phản ánh: #${shortCode(fb)}\n` +
     `🗓️ Ngày gửi: ${formatDate(fb.createdAt)}\n` +
     `🏷️ Loại: ${catName}\n` +
-    `📝 Nội dung: ${fb.content}\n\n` +
-    `${statusLine(fb)}`;
+    `${locationLine}` +
+    `📝 Nội dung: ${fb.content}\n\n`;
 
+  // Phần 2: Tiến trình xử lý
+  msg += progressBar(fb);
+
+  // Phần 3: Phản hồi của UBND (nếu đã giải quyết xong)
   if (isResolved(fb)) {
     const reply = fb.finalResponse || fb.response || '';
-    if (reply) msg += `\n💬 Phản hồi: ${reply}`;
+    if (reply) {
+      msg += `\n\n━━━━━━ PHẢN HỒI CỦA UBND ━━━━━━\n${reply}`;
+    }
   }
 
   await sendZaloText(userId, msg);

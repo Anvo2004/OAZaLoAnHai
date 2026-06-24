@@ -352,9 +352,17 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
     // Lãnh đạo có thể sửa nội dung trước khi gửi; nếu không sửa thì dùng bản dự thảo gốc
     const finalResponse = req.body.finalResponse?.trim() || feedback.draftResponse.trim()
     const notifyAdmin = !!req.body.notifyAdmin
+    const shortCode = feedback._id.toString().slice(-5).toUpperCase()
 
-    // Gửi tin cho dân qua Zalo OA
-    await sendZaloText(feedback.userId, finalResponse)
+    // Gửi tin cho dân qua Zalo OA — có tiêu đề mã phản ánh
+    const citizenMsg =
+      `📋 Mã phản ánh #${shortCode} đã hoàn tất xử lý\n` +
+      `${'─'.repeat(32)}\n` +
+      `${finalResponse}\n` +
+      `${'─'.repeat(32)}\n` +
+      `Cảm ơn bạn đã tin tưởng UBND phường An Hải!\n` +
+      `Nhắn "#theodoi" để theo dõi lại phản ánh.`
+    await sendZaloText(feedback.userId, citizenMsg)
 
     await Feedback.findByIdAndUpdate(req.params.id, {
       finalResponse,
@@ -369,7 +377,6 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
     })
 
     // Thông báo vào nhóm
-    const shortCode = feedback._id.toString().slice(-5).toUpperCase()
     const groupId = feedback.categoryId?.zaloGroupId
     const msg =
       `✅ PHẢN ÁNH ĐÃ ĐƯỢC DUYỆT & GỬI DÂN\n` +

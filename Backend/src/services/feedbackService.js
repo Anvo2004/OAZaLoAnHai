@@ -52,6 +52,16 @@ async function sendCategoryMenu(userId) {
   );
 }
 
+async function sendLocationPrompt(userId) {
+  await sendZaloText(userId,
+    '📍 Vui lòng cung cấp địa chỉ / vị trí phản ánh:\n\n' +
+    '• Gõ địa chỉ cụ thể (VD: 123 Nguyễn Văn A, phường An Hải)\n' +
+    '• Hoặc chia sẻ vị trí GPS từ điện thoại bằng nút đính kèm 📎\n\n' +
+    '1️⃣ Bỏ qua — không cung cấp địa chỉ\n\n' +
+    '(Nhắn "huỷ" để thoát)'
+  );
+}
+
 async function sendImagePrompt(userId, currentCount) {
   if (currentCount === 0) {
     await sendZaloText(userId,
@@ -141,8 +151,26 @@ async function handleText(userId, text, displayName) {
       await sendZaloText(userId, '⚠️ Nội dung quá ngắn. Vui lòng nhập ít nhất 5 ký tự.');
       return;
     }
-    const newState = { ...state, step: 'waiting_image', content: text.trim(), imageUrls: [] };
-    setState(userId, newState);
+    setState(userId, { ...state, step: 'waiting_location', content: text.trim() });
+    await sendLocationPrompt(userId);
+    return;
+  }
+
+  if (state.step === 'waiting_location') {
+    const skipKeywords = ['1', 'bỏ qua', 'bo qua', 'skip', 'không', 'khong'];
+    if (skipKeywords.some(k => lower.trim() === k)) {
+      setState(userId, { ...state, step: 'waiting_image', location: null, imageUrls: [] });
+      await sendImagePrompt(userId, 0);
+      return;
+    }
+    // Người dùng nhập tay địa chỉ
+    setState(userId, {
+      ...state,
+      step: 'waiting_image',
+      location: { address: text.trim(), lat: null, lng: null },
+      imageUrls: [],
+    });
+    await sendZaloText(userId, `✅ Đã ghi nhận địa chỉ: ${text.trim()}`);
     await sendImagePrompt(userId, 0);
     return;
   }
@@ -294,11 +322,15 @@ async function sendConfirmation(userId, state) {
   const imageStatus = imageUrls.length > 0
     ? `✅ ${imageUrls.length} ảnh đính kèm`
     : '❌ Không có ảnh';
+  const locationStatus = state.location?.address
+    ? `📍 ${state.location.address}`
+    : '📍 Không có địa chỉ';
   await sendZaloText(userId,
     '📋 Xác nhận góp ý:\n' +
     `• Liên hệ: ${state.contact}\n` +
     `• Loại: ${state.categoryName || 'Chưa chọn'}\n` +
     `• Nội dung: ${state.content}\n` +
+    `• Địa chỉ: ${locationStatus}\n` +
     `• Hình ảnh: ${imageStatus}\n\n` +
     'Trả lời bằng số:\n' +
     '1️⃣ Xác nhận gửi\n' +
@@ -318,7 +350,7 @@ async function saveFeedback(userId, state) {
     }
 
     const deadline = new Date();
-    deadline.setDate(deadline.getDate() + 3);
+    deadline.setDate(deadline.getDate() + 5);
 
     const imageUrls = state.imageUrls || [];
     const feedback = await Feedback.create({
@@ -326,6 +358,7 @@ async function saveFeedback(userId, state) {
       displayName,
       contact: state.contact,
       content: state.content,
+      location: state.location || {},
       imageUrl: imageUrls[0] || '',
       imageUrls,
       categoryId: state.categoryId || null,
@@ -344,6 +377,7 @@ async function saveFeedback(userId, state) {
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
     const catInfo = state.categoryName ? `🏷️ Loại: ${state.categoryName}\n` : '';
+    const locationInfo = state.location?.address ? `📍 Địa chỉ: ${state.location.address}\n` : '';
     const imageInfo = imageUrls.length > 0
       ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
       : '🖼️ Ảnh: Không có';
@@ -354,6 +388,7 @@ async function saveFeedback(userId, state) {
       `${nameInfo}` +
       `📞 Liên hệ: ${state.contact}\n` +
       `${catInfo}` +
+      `${locationInfo}` +
       `📝 Nội dung:\n${state.content}\n` +
       `${imageInfo}\n` +
       `🆔 Mã: #${shortCode}`;
@@ -368,6 +403,22 @@ async function saveFeedback(userId, state) {
   }
 }
 
+// Xử lý khi user chia sẻ vị trí GPS qua Zalo
+async function handleLocation(userId, { lat, lng, address }) {
+  const state = getState(userId);
+  if (!state || state.step !== 'waiting_location') return;
+
+  const addr = address || `${lat}, ${lng}`;
+  setState(userId, {
+    ...state,
+    step: 'waiting_image',
+    location: { address: addr, lat: Number(lat), lng: Number(lng) },
+    imageUrls: [],
+  });
+  await sendZaloText(userId, `✅ Đã ghi nhận vị trí: ${addr}`);
+  await sendImagePrompt(userId, 0);
+}
+
 function isFeedbackTrigger(text) {
   const lower = text.toLowerCase();
   return (
@@ -380,4 +431,4 @@ function isFeedbackTrigger(text) {
   );
 }
 
-module.exports = { startFeedback, handleText, handleImage, handleContactCard, isFeedbackTrigger };
+module.exports = { startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger };

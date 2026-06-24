@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const requireAuth = require('../middleware/requireAuth')
 const authRoutes = require('./auth')
+const publicRoutes = require('./public')
 const statsRoutes = require('./stats')
 const feedbackRoutes = require('./feedbacks')
 const userRoutes = require('./users')
@@ -10,6 +11,7 @@ const broadcastRoutes = require('./broadcast')
 const notificationRoutes = require('./notifications')
 
 router.use('/auth', authRoutes)
+router.use('/public', publicRoutes)
 
 router.use(requireAuth)
 router.use('/stats', statsRoutes)
