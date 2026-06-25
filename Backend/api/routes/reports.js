@@ -5,6 +5,8 @@ const requireRole = require('../middleware/requireRole')
 
 router.use(requireRole('superadmin', 'dept_leader'))
 
+const TREND_LENGTH = 6 // số kỳ hiển thị trong biểu đồ xu hướng
+
 // ── Tính khoảng thời gian + đơn vị nhóm theo loại kỳ báo cáo ──────────
 function getDateRange(period, value) {
   const now = new Date()
@@ -70,6 +72,34 @@ function getDateRange(period, value) {
   return { start, end, granularity: 'day', label: '30 ngày gần nhất' }
 }
 
+// Dịch một khoảng {start,end} lùi/tiến `offset` đơn vị kỳ báo cáo (offset âm = lùi về quá khứ)
+function shiftRange(period, { start, end }, offset) {
+  const ns = new Date(start), ne = new Date(end)
+  if (period === 'day') {
+    ns.setDate(ns.getDate() + offset); ne.setDate(ne.getDate() + offset)
+  } else if (period === 'week') {
+    ns.setDate(ns.getDate() + offset * 7); ne.setDate(ne.getDate() + offset * 7)
+  } else if (period === 'quarter') {
+    ns.setMonth(ns.getMonth() + offset * 3); ne.setMonth(ne.getMonth() + offset * 3)
+  } else if (period === 'year') {
+    ns.setFullYear(ns.getFullYear() + offset); ne.setFullYear(ne.getFullYear() + offset)
+  } else {
+    ns.setMonth(ns.getMonth() + offset); ne.setMonth(ne.getMonth() + offset)
+  }
+  return { start: ns, end: ne }
+}
+
+function rangeLabel(period, { start, end }) {
+  if (period === 'day') return start.toLocaleDateString('vi-VN')
+  if (period === 'week') {
+    const last = new Date(end.getTime() - 86400000)
+    return `${start.getDate()}/${start.getMonth() + 1}-${last.getDate()}/${last.getMonth() + 1}`
+  }
+  if (period === 'quarter') return `Q${Math.floor(start.getMonth() / 3) + 1}/${start.getFullYear()}`
+  if (period === 'year') return `${start.getFullYear()}`
+  return `Th${start.getMonth() + 1}/${start.getFullYear()}`
+}
+
 function bucketKey(date, granularity) {
   const d = new Date(date)
   if (granularity === 'hour') return `${d.getHours()}h`
@@ -99,9 +129,12 @@ function buildTimeline(start, end, granularity) {
 
 function isResolvedStatus(s) { return s === 'resolved' || s === 'done' }
 function isProcessingStatus(s) { return s === 'draft' || s === 'processing' }
+function isOverdue(fb, now) { return !!fb.deadline && new Date(fb.deadline) < now && !isResolvedStatus(fb.status) }
 
 async function buildReportData(period, value) {
-  const { start, end, granularity, label } = getDateRange(period, value)
+  const now = new Date()
+  const range = getDateRange(period, value)
+  const { start, end, granularity, label } = range
 
   const feedbacks = await Feedback.find({ createdAt: { $gte: start, $lt: end } })
     .populate('categoryId', 'name icon')
@@ -109,27 +142,66 @@ async function buildReportData(period, value) {
     .sort({ createdAt: 1 })
     .lean()
 
-  const totals = { total: feedbacks.length, pending: 0, processing: 0, resolved: 0 }
+  const totals = { total: feedbacks.length, pending: 0, processing: 0, resolved: 0, overdue: 0 }
   const categoryMap = new Map()
   const timelineMap = new Map()
+  const officerMap = new Map() // id → { officerName, total, resolved, processing, pending, overdue }
 
   for (const fb of feedbacks) {
     if (isResolvedStatus(fb.status)) totals.resolved++
     else if (isProcessingStatus(fb.status)) totals.processing++
     else totals.pending++
+    if (isOverdue(fb, now)) totals.overdue++
 
     const catName = fb.categoryId?.name || 'Chưa phân loại'
     categoryMap.set(catName, (categoryMap.get(catName) || 0) + 1)
 
     const key = bucketKey(fb.createdAt, granularity)
     timelineMap.set(key, (timelineMap.get(key) || 0) + 1)
+
+    if (fb.assignedTo) {
+      const id = fb.assignedTo._id.toString()
+      if (!officerMap.has(id)) {
+        officerMap.set(id, { officerName: fb.assignedTo.fullName, total: 0, resolved: 0, processing: 0, pending: 0, overdue: 0 })
+      }
+      const o = officerMap.get(id)
+      o.total++
+      if (isResolvedStatus(fb.status)) o.resolved++
+      else if (isProcessingStatus(fb.status)) o.processing++
+      else o.pending++
+      if (isOverdue(fb, now)) o.overdue++
+    }
   }
 
   const timelineBuckets = buildTimeline(start, end, granularity)
   const timeline = timelineBuckets.map((k) => ({ label: k, count: timelineMap.get(k) || 0 }))
   const byCategory = Array.from(categoryMap.entries()).map(([name, count]) => ({ name, count }))
+  const byOfficer = Array.from(officerMap.values()).sort((a, b) => b.total - a.total)
 
-  return { range: { start, end, label }, totals, byCategory, timeline, feedbacks }
+  // ── So sánh với kỳ trước ──
+  const prevRange = shiftRange(period, range, -1)
+  const prevFeedbacks = await Feedback.find({ createdAt: { $gte: prevRange.start, $lt: prevRange.end } })
+    .select('status')
+    .lean()
+  const previous = { total: prevFeedbacks.length, pending: 0, processing: 0, resolved: 0 }
+  for (const fb of prevFeedbacks) {
+    if (isResolvedStatus(fb.status)) previous.resolved++
+    else if (isProcessingStatus(fb.status)) previous.processing++
+    else previous.pending++
+  }
+  previous.label = rangeLabel(period, prevRange)
+
+  // ── Xu hướng nhiều kỳ gần nhất ──
+  const trendOffsets = Array.from({ length: TREND_LENGTH }, (_, i) => i - (TREND_LENGTH - 1))
+  const trend = await Promise.all(
+    trendOffsets.map(async (offset) => {
+      const r = shiftRange(period, range, offset)
+      const count = await Feedback.countDocuments({ createdAt: { $gte: r.start, $lt: r.end } })
+      return { label: rangeLabel(period, r), count }
+    })
+  )
+
+  return { range: { start, end, label }, totals, byCategory, byOfficer, timeline, previous, trend, feedbacks }
 }
 
 // GET /api/reports/summary?period=day|week|month|quarter|year&value=...
@@ -141,7 +213,10 @@ router.get('/summary', async (req, res) => {
       range: data.range,
       totals: data.totals,
       byCategory: data.byCategory,
+      byOfficer: data.byOfficer,
       timeline: data.timeline,
+      previous: data.previous,
+      trend: data.trend,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -153,6 +228,7 @@ router.get('/export', async (req, res) => {
   try {
     const { period = 'month', value } = req.query
     const data = await buildReportData(period, value)
+    const now = new Date()
 
     const wb = new ExcelJS.Workbook()
     wb.creator = 'UBND Phường An Hải'
@@ -164,26 +240,37 @@ router.get('/export', async (req, res) => {
     s1.getCell('A1').value = `BÁO CÁO THỐNG KÊ GÓP Ý - PHẢN ÁNH — ${data.range.label}`
     s1.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF1B5E20' } }
     s1.addRow([])
-    s1.addRow(['Chỉ số', 'Số lượng']).font = { bold: true }
-    s1.addRow(['Tổng số phản ánh', data.totals.total])
-    s1.addRow(['Chờ xử lý', data.totals.pending])
-    s1.addRow(['Đang xử lý', data.totals.processing])
-    s1.addRow(['Đã xử lý', data.totals.resolved])
+    s1.addRow(['Chỉ số', 'Số lượng', `Kỳ trước (${data.previous.label})`]).font = { bold: true }
+    s1.addRow(['Tổng số phản ánh', data.totals.total, data.previous.total])
+    s1.addRow(['Chờ xử lý', data.totals.pending, data.previous.pending])
+    s1.addRow(['Đang xử lý', data.totals.processing, data.previous.processing])
+    s1.addRow(['Đã xử lý', data.totals.resolved, data.previous.resolved])
+    s1.addRow(['Quá hạn (chưa xử lý xong)', data.totals.overdue, ''])
     s1.addRow([])
     s1.addRow(['Phân loại theo danh mục']).font = { bold: true }
     s1.addRow(['Danh mục', 'Số lượng']).font = { bold: true }
     data.byCategory.forEach((c) => s1.addRow([c.name, c.count]))
-    s1.columns = [{ width: 36 }, { width: 16 }]
+    s1.columns = [{ width: 36 }, { width: 16 }, { width: 20 }]
 
     // ── Sheet 2: Theo thời gian ──
     const s2 = wb.addWorksheet('Theo thời gian')
     s2.addRow(['Thời điểm', 'Số lượng']).font = { bold: true }
     data.timeline.forEach((t) => s2.addRow([t.label, t.count]))
+    s2.addRow([])
+    s2.addRow(['Xu hướng nhiều kỳ gần nhất']).font = { bold: true }
+    s2.addRow(['Kỳ', 'Số lượng']).font = { bold: true }
+    data.trend.forEach((t) => s2.addRow([t.label, t.count]))
     s2.columns = [{ width: 20 }, { width: 14 }]
 
-    // ── Sheet 3: Chi tiết hồ sơ ──
+    // ── Sheet 3: Theo cán bộ ──
+    const s4 = wb.addWorksheet('Theo cán bộ')
+    s4.addRow(['Cán bộ', 'Tổng số', 'Đã xử lý', 'Đang xử lý', 'Chờ xử lý', 'Quá hạn']).font = { bold: true }
+    data.byOfficer.forEach((o) => s4.addRow([o.officerName, o.total, o.resolved, o.processing, o.pending, o.overdue]))
+    s4.columns = [{ width: 24 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }]
+
+    // ── Sheet 4: Chi tiết hồ sơ ──
     const s3 = wb.addWorksheet('Chi tiết hồ sơ')
-    const headers = ['Mã hồ sơ', 'Ngày gửi', 'Người gửi', 'Liên hệ', 'Danh mục', 'Địa chỉ', 'Nội dung', 'Trạng thái', 'Người phụ trách', 'Hạn xử lý']
+    const headers = ['Mã hồ sơ', 'Ngày gửi', 'Người gửi', 'Liên hệ', 'Danh mục', 'Địa chỉ', 'Nội dung', 'Trạng thái', 'Quá hạn', 'Người phụ trách', 'Hạn xử lý']
     s3.addRow(headers).font = { bold: true }
     data.feedbacks.forEach((fb) => {
       const statusLabel = isResolvedStatus(fb.status) ? 'Đã xử lý' : isProcessingStatus(fb.status) ? 'Đang xử lý' : 'Chờ xử lý'
@@ -196,11 +283,12 @@ router.get('/export', async (req, res) => {
         fb.location?.address || '',
         fb.content || '',
         statusLabel,
+        isOverdue(fb, now) ? 'Có' : '',
         fb.assignedTo?.fullName || '',
         fb.deadline ? new Date(fb.deadline).toLocaleDateString('vi-VN') : '',
       ])
     })
-    s3.columns = headers.map((h) => ({ width: h === 'Nội dung' ? 40 : h === 'Địa chỉ' ? 28 : 18 }))
+    s3.columns = headers.map((h) => ({ width: h === 'Nội dung' ? 40 : h === 'Địa chỉ' ? 28 : 16 }))
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', `attachment; filename="BaoCao_GopY_${period}_${Date.now()}.xlsx"`)

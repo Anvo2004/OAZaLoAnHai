@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { Inbox, Clock, Cog, CheckCircle2, Download, Loader2, FileBarChart2 } from 'lucide-react'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { Inbox, Clock, Cog, CheckCircle2, AlertTriangle, Download, Loader2, FileBarChart2, ArrowUp, ArrowDown, Minus, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
 
 const PERIODS = [
   { value: 'day',     label: 'Ngày' },
@@ -32,13 +33,33 @@ function defaultValue(period) {
   return ''
 }
 
-function StatCard({ label, value, icon: Icon, colorClass, iconBg }) {
+// goodDirection: 'up' = tăng là tốt (vd Đã xử lý), 'down' = giảm là tốt (vd Chờ xử lý, Quá hạn)
+function ChangeBadge({ current, previous, goodDirection = 'up' }) {
+  if (!previous) {
+    return <span className="text-[11px] text-slate-300 inline-flex items-center gap-0.5"><Minus className="h-3 w-3" /> chưa có dữ liệu kỳ trước</span>
+  }
+  const diff = current - previous
+  const pct = Math.round((diff / previous) * 100)
+  const isUp = diff > 0
+  const isGood = diff === 0 ? null : goodDirection === 'up' ? isUp : !isUp
+  const colorClass = diff === 0 ? 'text-slate-400' : isGood ? 'text-emerald-600' : 'text-red-500'
+  const Icon = diff === 0 ? Minus : isUp ? ArrowUp : ArrowDown
+  return (
+    <span className={cn('text-[11px] font-semibold inline-flex items-center gap-0.5', colorClass)}>
+      <Icon className="h-3 w-3" />
+      {diff === 0 ? 'Không đổi' : `${Math.abs(pct)}%`} so với kỳ trước
+    </span>
+  )
+}
+
+function StatCard({ label, value, icon: Icon, colorClass, iconBg, changeNode }) {
   return (
     <div className="card-hover relative overflow-hidden rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">{label}</p>
           <p className={`text-3xl font-bold ${colorClass}`}>{value ?? '—'}</p>
+          {changeNode && <div className="mt-1.5">{changeNode}</div>}
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-5 w-5 ${colorClass}`} />
@@ -79,9 +100,16 @@ export default function ReportsPage() {
     () => (data?.timeline || []).map((t) => ({ name: t.label, count: t.count })),
     [data]
   )
-
+  const trendData = useMemo(
+    () => (data?.trend || []).map((t) => ({ name: t.label, count: t.count })),
+    [data]
+  )
   const maxCategoryCount = useMemo(
     () => Math.max(1, ...(data?.byCategory || []).map((c) => c.count)),
+    [data]
+  )
+  const maxOfficerCount = useMemo(
+    () => Math.max(1, ...(data?.byOfficer || []).map((o) => o.total)),
     [data]
   )
 
@@ -193,11 +221,31 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Tổng cộng" value={data.totals.total} icon={Inbox} colorClass="text-slate-700" iconBg="bg-slate-100" />
-            <StatCard label="Chờ xử lý" value={data.totals.pending} icon={Clock} colorClass="text-amber-600" iconBg="bg-amber-50" />
-            <StatCard label="Đang xử lý" value={data.totals.processing} icon={Cog} colorClass="text-sky-600" iconBg="bg-sky-50" />
-            <StatCard label="Đã xử lý" value={data.totals.resolved} icon={CheckCircle2} colorClass="text-emerald-600" iconBg="bg-emerald-50" />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              label="Tổng cộng" value={data.totals.total} icon={Inbox}
+              colorClass="text-slate-700" iconBg="bg-slate-100"
+              changeNode={<ChangeBadge current={data.totals.total} previous={data.previous.total} goodDirection="up" />}
+            />
+            <StatCard
+              label="Chờ xử lý" value={data.totals.pending} icon={Clock}
+              colorClass="text-amber-600" iconBg="bg-amber-50"
+              changeNode={<ChangeBadge current={data.totals.pending} previous={data.previous.pending} goodDirection="down" />}
+            />
+            <StatCard
+              label="Đang xử lý" value={data.totals.processing} icon={Cog}
+              colorClass="text-sky-600" iconBg="bg-sky-50"
+              changeNode={<ChangeBadge current={data.totals.processing} previous={data.previous.processing} goodDirection="down" />}
+            />
+            <StatCard
+              label="Đã xử lý" value={data.totals.resolved} icon={CheckCircle2}
+              colorClass="text-emerald-600" iconBg="bg-emerald-50"
+              changeNode={<ChangeBadge current={data.totals.resolved} previous={data.previous.resolved} goodDirection="up" />}
+            />
+            <StatCard
+              label="Quá hạn" value={data.totals.overdue} icon={AlertTriangle}
+              colorClass="text-red-600" iconBg="bg-red-50"
+            />
           </div>
 
           <div className="grid lg:grid-cols-5 gap-4">
@@ -205,7 +253,7 @@ export default function ReportsPage() {
             <div className="lg:col-span-3 card-hover rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
               <h3 className="font-bold text-slate-800 text-base mb-1">Số lượng theo thời gian</h3>
               <p className="text-xs text-slate-400 mb-4">{data.range.label}</p>
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={timelineData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="barGrad2" x1="0" y1="0" x2="0" y2="1">
@@ -249,6 +297,64 @@ export default function ReportsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-5 gap-4">
+            {/* Trend line chart */}
+            <div className="lg:col-span-3 card-hover rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                <h3 className="font-bold text-slate-800 text-base">Xu hướng {PERIODS.find((p) => p.value === period)?.label.toLowerCase()} gần nhất</h3>
+              </div>
+              <p className="text-xs text-slate-400 mb-4">So sánh {data.trend?.length || 0} kỳ liên tiếp</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line type="monotone" dataKey="count" stroke="#059669" strokeWidth={2.5} dot={{ r: 4, fill: '#059669' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* By officer */}
+            <div className="lg:col-span-2 card-hover rounded-2xl bg-white border border-slate-100 shadow-sm p-5">
+              <h3 className="font-bold text-slate-800 text-base mb-1">Theo cán bộ phụ trách</h3>
+              <p className="text-xs text-slate-400 mb-4">Số hồ sơ trong kỳ</p>
+              {!data.byOfficer?.length ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Inbox className="h-8 w-8 text-slate-200 mb-2" />
+                  <p className="text-sm text-slate-400">Chưa có phân công nào trong kỳ</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                  {data.byOfficer.map((o) => (
+                    <div key={o.officerName}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-slate-600 font-medium truncate pr-2">{o.officerName}</span>
+                        <span className="text-slate-800 font-bold shrink-0">{o.total}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden flex">
+                        <div className="h-full bg-emerald-500" style={{ width: `${(o.resolved / maxOfficerCount) * 100}%` }} />
+                        <div className="h-full bg-sky-400" style={{ width: `${(o.processing / maxOfficerCount) * 100}%` }} />
+                        <div className="h-full bg-amber-400" style={{ width: `${(o.pending / maxOfficerCount) * 100}%` }} />
+                      </div>
+                      {o.overdue > 0 && (
+                        <p className="text-[11px] text-red-500 font-semibold mt-1 inline-flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> {o.overdue} hồ sơ quá hạn
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-50 text-[11px] text-slate-400">
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Đã xử lý</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-400" /> Đang xử lý</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Chờ xử lý</span>
+              </div>
             </div>
           </div>
         </>
