@@ -44,27 +44,31 @@ function statusLine(fb) {
 function progressBar(fb) {
   // Stage 1: luôn hoàn thành (đã gởi hồ sơ)
   const s1 = true;
-  // Stage 2: đã được phân công
+  // Stage 2: đã tiếp nhận — được phân công cho cán bộ
   const s2 = !!(fb.assignedTo || fb.status === 'draft' || isResolved(fb));
-  // Stage 3: cán bộ đã nộp dự thảo chờ duyệt
+  // Stage 3: đang xử lý — cán bộ đã nộp dự thảo chờ duyệt
   const s3 = fb.status === 'draft' || isResolved(fb);
-  // Stage 4: đã duyệt và gởi hoàn tất
+  // Stage 4: đã duyệt
   const s4 = isResolved(fb);
+  // Stage 5: đã gởi hoàn tất hồ sơ
+  const s5 = isResolved(fb);
 
   const mark = (done) => done ? '✅' : '⬜';
   const stages = [
-    `${mark(s1)} 1. Đã gởi hồ sơ`,
-    `${mark(s2)} 2. Đang xử lý`,
-    `${mark(s3)} 3. Đã duyệt`,
-    `${mark(s4)} 4. Đã gởi hoàn tất hồ sơ`,
+    `${mark(s1)} 1. Đã gởi`,
+    `${mark(s2)} 2. Đã tiếp nhận`,
+    `${mark(s3)} 3. Đang xử lý`,
+    `${mark(s4)} 4. Đã duyệt`,
+    `${mark(s5)} 5. Đã gởi hoàn tất hồ sơ`,
   ];
 
   // Xác định bước hiện tại
   let current = 1;
-  if (s4) current = 4;
+  if (s5) current = 5;
+  else if (s4) current = 4;
   else if (s3) current = 3;
   else if (s2) current = 2;
-  const labels = stages.map((s, i) => i + 1 === current && !s4 ? s + ' ⏳' : s);
+  const labels = stages.map((s, i) => i + 1 === current && !s5 ? s + ' ⏳' : s);
 
   return '📊 TIẾN TRÌNH XỬ LÝ\n' + labels.join('\n');
 }
@@ -111,6 +115,8 @@ async function startLookup(userId) {
 async function replyDetail(userId, fb) {
   const catName = fb.categoryId?.name || 'Chưa rõ';
   const locationLine = fb.location?.address ? `📍 Địa chỉ: ${fb.location.address}\n` : '';
+  // Hạn xử lý — chỉ hiển thị khi chưa gởi hoàn tất hồ sơ
+  const deadlineLine = (!isResolved(fb) && fb.deadline) ? `⏰ Hạn xử lý: ${formatDate(fb.deadline)}\n` : '';
 
   // Phần 1: Thông tin hồ sơ
   let msg =
@@ -119,6 +125,7 @@ async function replyDetail(userId, fb) {
     `🗓️ Ngày gửi: ${formatDate(fb.createdAt)}\n` +
     `🏷️ Loại: ${catName}\n` +
     `${locationLine}` +
+    `${deadlineLine}` +
     `📝 Nội dung: ${fb.content}\n\n`;
 
   // Phần 2: Tiến trình xử lý
