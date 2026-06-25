@@ -4,11 +4,13 @@ const { getProfiles } = require('../../src/admin/profileCache')
 
 router.get('/', async (req, res) => {
   try {
+    // "processing" = đang xử lý (cán bộ đã nhận và soạn dự thảo)
+    // "done" = đã xử lý / đã giải quyết (đã duyệt và gửi phản hồi cho dân)
     const [total, pending, processing, done] = await Promise.all([
       Feedback.countDocuments(),
       Feedback.countDocuments({ status: 'pending' }),
-      Feedback.countDocuments({ status: 'processing' }),
-      Feedback.countDocuments({ status: 'done' }),
+      Feedback.countDocuments({ status: { $in: ['draft', 'processing'] } }),
+      Feedback.countDocuments({ status: { $in: ['resolved', 'done'] } }),
     ])
 
     const recent = await Feedback.find()
