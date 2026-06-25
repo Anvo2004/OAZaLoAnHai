@@ -59,7 +59,7 @@ function progressBar(fb) {
     `${mark(s2)} 2. Đã tiếp nhận`,
     `${mark(s3)} 3. Đang xử lý`,
     `${mark(s4)} 4. Đã duyệt`,
-    `${mark(s5)} 5. Đã gởi hoàn tất hồ sơ`,
+    `${mark(s5)} 5. Đã xử lý`,
   ];
 
   // Xác định bước hiện tại
