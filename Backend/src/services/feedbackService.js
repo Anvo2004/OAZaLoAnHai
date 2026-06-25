@@ -13,6 +13,10 @@ const BATCH_DELAY_MS = 3000; // Chờ 3s để gộp ảnh gửi cùng lúc (Zal
 // Format Nominatim viewbox: left,top,right,bottom = min_lng,max_lat,max_lng,min_lat
 const AN_HAI_VIEWBOX = '108.2194,16.0889,108.2479,16.0478';
 
+// Khu vực đô thị Đà Nẵng (trước khi sáp nhập Quảng Nam) — dùng làm phạm vi fallback
+// để tránh geocode nhảy ra các khu vực xa (vd Khâm Đức, Phước Sơn) khi tên đường trùng lặp
+const DA_NANG_URBAN_VIEWBOX = '108.05,16.18,108.33,15.95';
+
 // Geocode địa chỉ tay → lat/lng bằng Nominatim (OpenStreetMap, miễn phí)
 // Lưu ý: sau cải cách hành chính, Đà Nẵng không còn cấp quận/huyện (vd "Sơn Trà"),
 // nên KHÔNG gắn cứng tên quận/phường vào query — dùng viewbox để ưu tiên kết quả trong An Hải.
@@ -21,21 +25,21 @@ async function geocodeAddress(address) {
   const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' };
   const query = `${address}, Đà Nẵng, Việt Nam`;
 
-  try {
-    // Ưu tiên kết quả nằm trong phạm vi An Hải
-    let res = await axios.get('https://nominatim.openstreetmap.org/search', {
-      params: { q: query, format: 'json', limit: 1, countrycodes: 'vn', viewbox: AN_HAI_VIEWBOX, bounded: 1 },
-      headers,
-      timeout: 5000,
-    });
+  const search = (viewbox) => axios.get('https://nominatim.openstreetmap.org/search', {
+    params: { q: query, format: 'json', limit: 1, countrycodes: 'vn', viewbox, bounded: 1 },
+    headers,
+    timeout: 5000,
+  });
 
+  try {
+    // Bước 1: ưu tiên kết quả nằm trong phạm vi An Hải
+    let res = await search(AN_HAI_VIEWBOX);
+
+    // Bước 2: nếu không có (địa chỉ thuộc phường/khu vực khác), tìm trong toàn khu đô thị
+    // Đà Nẵng — KHÔNG tìm không giới hạn để tránh nhảy sang Quảng Nam (Khâm Đức, Phước Sơn...)
+    // khi tên đường bị trùng giữa nhiều nơi.
     if (!res.data?.length) {
-      // Fallback: tìm rộng khắp Đà Nẵng nếu không có trong An Hải
-      res = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: { q: query, format: 'json', limit: 1, countrycodes: 'vn' },
-        headers,
-        timeout: 5000,
-      });
+      res = await search(DA_NANG_URBAN_VIEWBOX);
     }
 
     if (res.data && res.data.length > 0) {
