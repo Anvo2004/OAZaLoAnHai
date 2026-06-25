@@ -192,6 +192,9 @@ async function handleText(userId, text, displayName) {
     await sendZaloText(userId,
       `✅ Loại phản ánh: ${cat.name}\n\n` +
       '✏️ Nhập nội dung góp ý / phản ánh của bạn (tối thiểu 5 ký tự):\n\n' +
+      '⚠️ Lưu ý: Vui lòng cung cấp thông tin đầy đủ, chính xác, đúng sự thật. ' +
+      'Không đùa giỡn, gửi nội dung sai sự thật hoặc gây nhiễu hệ thống — ' +
+      'mọi phản ánh đều được lưu vết và xử lý theo quy định.\n\n' +
       '(Nhắn "huỷ" để thoát)'
     );
     return;
