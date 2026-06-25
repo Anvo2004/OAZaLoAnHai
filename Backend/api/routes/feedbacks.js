@@ -387,8 +387,7 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
       `${'─'.repeat(32)}\n` +
       `${finalResponse}\n` +
       `${'─'.repeat(32)}\n` +
-      `Cảm ơn bạn đã tin tưởng UBND phường An Hải!\n` +
-      `Nhắn "#theodoi" để theo dõi lại phản ánh.`
+      `Cảm ơn bạn đã tin tưởng UBND phường An Hải!`
     await sendZaloText(feedback.userId, citizenMsg)
 
     await Feedback.findByIdAndUpdate(req.params.id, {
