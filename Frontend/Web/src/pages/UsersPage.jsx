@@ -1,6 +1,7 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Loader2, ShieldCheck, Shield, User } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, ShieldCheck, Shield, User, Filter } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,8 @@ function RoleBadge({ role }) {
 export default function UsersPage() {
   const { user: me } = useAuth()
   const queryClient = useQueryClient()
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -44,14 +47,30 @@ export default function UsersPage() {
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi xóa'),
   })
 
-  const users = data?.users ?? []
+  const allUsers = data?.users ?? []
+
+  const categoryOptions = useMemo(() => {
+    const map = new Map()
+    allUsers.forEach((u) => (u.categoryIds || []).forEach((c) => map.set(c._id, c)))
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [allUsers])
+
+  const users = useMemo(() => {
+    return allUsers.filter((u) => {
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false
+      if (categoryFilter !== 'all' && !(u.categoryIds || []).some((c) => c._id === categoryFilter)) return false
+      return true
+    })
+  }, [allUsers, roleFilter, categoryFilter])
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Tài khoản Admin</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{users.length} tài khoản</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {users.length}/{allUsers.length} tài khoản
+          </p>
         </div>
         <Link to="/users/new">
           <Button size="sm">
@@ -60,10 +79,50 @@ export default function UsersPage() {
         </Link>
       </div>
 
+      {/* Bộ lọc theo vai trò + loại phụ trách */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white border border-slate-100 shadow-sm px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <Filter className="h-3.5 w-3.5" /> Lọc theo
+        </span>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+        >
+          <option value="all">Tất cả vai trò</option>
+          {Object.entries(ROLE_CONFIG).map(([value, cfg]) => (
+            <option key={value} value={value}>{cfg.label}</option>
+          ))}
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+        >
+          <option value="all">Tất cả loại phụ trách</option>
+          {categoryOptions.map((c) => (
+            <option key={c._id} value={c._id}>{c.icon} {c.name}</option>
+          ))}
+        </select>
+        {(roleFilter !== 'all' || categoryFilter !== 'all') && (
+          <button
+            onClick={() => { setRoleFilter('all'); setCategoryFilter('all') }}
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 ml-auto"
+          >
+            Xóa lọc
+          </button>
+        )}
+      </div>
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 gap-1 text-center">
+            <p className="text-sm font-medium text-slate-500">Không có tài khoản phù hợp</p>
+            <p className="text-xs text-slate-400">Thử đổi lại bộ lọc vai trò / loại phụ trách</p>
           </div>
         ) : (
           <table className="w-full text-sm">
