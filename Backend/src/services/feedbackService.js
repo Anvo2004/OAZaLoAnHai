@@ -58,10 +58,6 @@ function isPhone(text) {
   return /^(0|\+84)[3-9]\d{8}$/.test(text.replace(/\s/g, ''));
 }
 
-function isEmail(text) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
-}
-
 function isUrl(text) {
   return /^https?:\/\/.+/i.test(text.trim());
 }
@@ -79,7 +75,7 @@ async function startFeedback(userId, displayName = '') {
   setState(userId, { step: 'waiting_contact', displayName: name });
   await sendZaloText(userId,
     '💬 Chào mừng bạn đến với tính năng Góp ý - Phản ánh của UBND phường An Hải!\n\n' +
-    '📞 Vui lòng nhập SĐT (09xxxxxxxx) hoặc email của bạn để chúng tôi có thể liên hệ lại:\n\n' +
+    '📞 Vui lòng nhập SĐT (09xxxxxxxx) của bạn để chúng tôi có thể liên hệ lại:\n\n' +
     '(Nhắn "huỷ" để thoát bất cứ lúc nào)'
   );
 }
@@ -154,10 +150,10 @@ async function handleText(userId, text, displayName) {
   }
 
   if (state.step === 'waiting_contact') {
-    if (!isPhone(text) && !isEmail(text)) {
+    if (!isPhone(text)) {
       await sendZaloText(userId,
-        '⚠️ Thông tin liên hệ không hợp lệ.\n\n' +
-        'Vui lòng nhập:\n• SĐT: 10 chữ số (VD: 0912345678)\n• Email: vd@gmail.com\n\n' +
+        '⚠️ Số điện thoại không hợp lệ.\n\n' +
+        'Vui lòng nhập SĐT 10 chữ số (VD: 0912345678)\n\n' +
         '(Nhắn "huỷ" để thoát)'
       );
       return;
