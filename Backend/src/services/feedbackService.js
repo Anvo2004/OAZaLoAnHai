@@ -1,4 +1,4 @@
-const { sendZaloText, sendZaloButtons, sendZaloLinkButton, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
+const { sendZaloText, sendZaloLinkButton, sendZaloToGroup, getZaloUserProfile } = require('../utils/zaloApi');
 const CONFIG = require('../config');
 const { uploadFromUrl, uploadFromZaloImageUrl } = require('../utils/cloudinary');
 const { saveProfile } = require('../admin/profileCache');

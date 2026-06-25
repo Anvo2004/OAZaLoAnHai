@@ -119,12 +119,6 @@ async function sendZaloLinkButton(userId, title, subtitle, buttonLabel, url) {
   }
 }
 
-async function sendZaloButtons(userId, text, buttons) {
-  const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
-  const btnLabels = buttons.map((b, i) => `${numbers[i]} ${b.title}`).join('\n');
-  await sendZaloText(userId, `${text}\n\n${btnLabels}`);
-}
-
 // Gửi text vào nhóm Zalo (theo groupId)
 async function sendZaloToGroup(text, groupId, mentions = []) {
   const targetId = groupId || CONFIG.ZALO_GROUP_ID;
@@ -407,7 +401,6 @@ module.exports = {
   sendZaloText,
   sendZaloLinkButton,
   sendZaloTextToGroup,
-  sendZaloButtons,
   sendZaloToGroup,
   sendZaloGroupText,
   sendZaloImages,
