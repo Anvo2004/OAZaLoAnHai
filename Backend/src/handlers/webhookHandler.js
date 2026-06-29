@@ -43,6 +43,23 @@ async function handleWebhook(body) {
     return;
   }
 
+  // Sự kiện liên quan yêu cầu tham gia nhóm — danh sách chờ duyệt luôn lấy live từ Zalo
+  // (listpendinginvite) ở trang Cài đặt nhóm nên các sự kiện này chỉ cần log để theo dõi.
+  const GROUP_JOIN_REQUEST_EVENTS = [
+    'user_request_join_group',        // có người mới gửi yêu cầu tham gia nhóm
+    'react_request_join_group',       // tên thực tế Zalo trả khi bấm "Test" trên dashboard
+    'accept_request_join_group',      // tên theo docs Zalo cho sự kiện "đã duyệt xong"
+    'react_request_join_group_reject',
+    'reject_request_join_group',
+  ];
+  if (GROUP_JOIN_REQUEST_EVENTS.includes(eventName)) {
+    const groupId = body.group_id || body.group?.id;
+    const rawUsers = body.users || [];
+    const userIds = rawUsers.map((u) => (typeof u === 'string' ? u : u?.id)).filter(Boolean);
+    console.log(`[GroupJoin] Webhook ${eventName}: groupId=${groupId}, ${userIds.length} user — xem/duyệt tại trang Cài đặt nhóm`);
+    return;
+  }
+
   // Sự kiện thành viên ra/vào nhóm
   if (['user_join_group', 'user_leave_group'].includes(eventName)) {
     const groupId = body.group?.id || body.group_id;

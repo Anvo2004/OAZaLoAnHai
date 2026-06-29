@@ -397,6 +397,67 @@ async function deleteZaloGroup(groupId) {
   return true;
 }
 
+// Lấy danh sách thành viên đang chờ duyệt vào nhóm (GMF v3.0)
+async function getPendingGroupMembers(groupId, offset = 0, count = 50) {
+  const doRequest = (token) =>
+    axios.get('https://openapi.zalo.me/v3.0/oa/group/listpendinginvite', {
+      params: { group_id: String(groupId), offset, count },
+      headers: { access_token: token },
+    });
+  let res = await doRequest(getToken());
+  if (res.data?.error === -216) {
+    const newToken = await refreshAccessToken();
+    res = await doRequest(newToken);
+  }
+  if (res.data?.error !== 0) {
+    console.warn(`[Zalo] listpendinginvite group=${groupId} lỗi:`, res.data?.error, res.data?.message);
+  }
+  const d = res.data?.data || {};
+  return { members: d.members || [], total: d.total || 0, raw: res.data };
+}
+
+// Duyệt thành viên đang chờ vào nhóm (GMF v3.0)
+async function acceptGroupJoinRequest(groupId, memberUserIds) {
+  const doRequest = (token) =>
+    axios.post('https://openapi.zalo.me/v3.0/oa/group/acceptpendinginvite', {
+      group_id: String(groupId),
+      member_user_ids: memberUserIds.map(String),
+    }, {
+      headers: { access_token: token, 'Content-Type': 'application/json' },
+    });
+
+  let res = await doRequest(getToken());
+  if (res.data?.error === -216) {
+    const newToken = await refreshAccessToken();
+    res = await doRequest(newToken);
+  }
+  if (res.data?.error !== 0) {
+    throw new Error(`Zalo error ${res.data?.error}: ${res.data?.message}`);
+  }
+  return true;
+}
+
+// Từ chối thành viên đang chờ vào nhóm (GMF v3.0)
+async function rejectGroupJoinRequest(groupId, memberUserIds) {
+  const doRequest = (token) =>
+    axios.post('https://openapi.zalo.me/v3.0/oa/group/rejectpendinginvite', {
+      group_id: String(groupId),
+      member_user_ids: memberUserIds.map(String),
+    }, {
+      headers: { access_token: token, 'Content-Type': 'application/json' },
+    });
+
+  let res = await doRequest(getToken());
+  if (res.data?.error === -216) {
+    const newToken = await refreshAccessToken();
+    res = await doRequest(newToken);
+  }
+  if (res.data?.error !== 0) {
+    throw new Error(`Zalo error ${res.data?.error}: ${res.data?.message}`);
+  }
+  return true;
+}
+
 module.exports = {
   sendZaloText,
   sendZaloLinkButton,
@@ -418,4 +479,7 @@ module.exports = {
   getGroupMembersV3,
   createZaloGroup,
   deleteZaloGroup,
+  getPendingGroupMembers,
+  acceptGroupJoinRequest,
+  rejectGroupJoinRequest,
 };

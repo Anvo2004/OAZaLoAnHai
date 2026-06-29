@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react'
+import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, RefreshCw, Search, X, UserCheck, Check } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
@@ -24,16 +24,99 @@ function Avatar({ name, avatar, size = 8 }) {
   )
 }
 
+function PendingMembersModal({ cat, members, onClose, onApprove, onReject, approvingId, rejectingId }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-700">
+            Duyệt thành viên — {cat.icon} {cat.name}
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto divide-y divide-slate-100 flex-1">
+          {members.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">Không có ai đang chờ duyệt</p>
+          ) : (
+            members.map((u) => (
+              <div key={u.id} className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Avatar name={u.name} avatar={u.avatar} size={8} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{u.name || '(Chưa quan tâm OA)'}</p>
+                    <p className="text-[11px] text-slate-400 font-mono">{u.id}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => onApprove(u)}
+                    disabled={approvingId === u.id || rejectingId === u.id}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-50"
+                  >
+                    {approvingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    Duyệt
+                  </button>
+                  <button
+                    onClick={() => onReject(u)}
+                    disabled={approvingId === u.id || rejectingId === u.id}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {rejectingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                    Từ chối
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CategoryMemberPanel({ cat, followers, onDelete }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [search, setSearch] = useState('')
+  const [showPending, setShowPending] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['zalo-members', cat._id],
     queryFn: () => api.get(`/api/zalo-members/${cat._id}`).then((r) => r.data),
     enabled: open,
+  })
+
+  const { data: pendingData } = useQuery({
+    queryKey: ['zalo-pending', cat._id],
+    queryFn: () => api.get(`/api/zalo-members/pending/${cat._id}`).then((r) => r.data),
+    refetchInterval: 30000,
+  })
+  const pendingMembers = pendingData?.members ?? []
+
+  const approveMutation = useMutation({
+    mutationFn: (user) => api.post(`/api/zalo-members/pending/${cat._id}/approve`, { users: [user] }).then((r) => r.data),
+    onSuccess: (_, user) => {
+      toast.success(`Đã duyệt ${user.name || user.id} vào nhóm`)
+      queryClient.invalidateQueries({ queryKey: ['zalo-pending', cat._id] })
+      queryClient.invalidateQueries({ queryKey: ['zalo-members', cat._id] })
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi duyệt thành viên'),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (user) => api.post(`/api/zalo-members/pending/${cat._id}/reject`, { userIds: [user.id] }).then((r) => r.data),
+    onSuccess: (_, user) => {
+      toast.success(`Đã từ chối ${user.name || user.id}`)
+      queryClient.invalidateQueries({ queryKey: ['zalo-pending', cat._id] })
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Lỗi từ chối thành viên'),
   })
 
   const addMutation = useMutation({
@@ -102,6 +185,14 @@ function CategoryMemberPanel({ cat, followers, onDelete }) {
                 {members.length} thành viên
               </span>
             )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowPending(true) }}
+              className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-colors ${pendingMembers.length > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+            >
+              <UserCheck className="h-3 w-3" />
+              Duyệt thành viên{pendingMembers.length > 0 ? ` (${pendingMembers.length})` : ''}
+            </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); syncMutation.mutate() }}
@@ -249,6 +340,18 @@ function CategoryMemberPanel({ cat, followers, onDelete }) {
             </div>
           )}
         </CardContent>
+      )}
+
+      {showPending && (
+        <PendingMembersModal
+          cat={cat}
+          members={pendingMembers}
+          onClose={() => setShowPending(false)}
+          onApprove={(u) => approveMutation.mutate(u)}
+          onReject={(u) => rejectMutation.mutate(u)}
+          approvingId={approveMutation.isPending ? approveMutation.variables?.id : null}
+          rejectingId={rejectMutation.isPending ? rejectMutation.variables?.id : null}
+        />
       )}
     </Card>
   )
