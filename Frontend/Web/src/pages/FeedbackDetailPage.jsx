@@ -33,6 +33,7 @@ export default function FeedbackDetailPage() {
   const [notifyAdmin, setNotifyAdmin] = useState(false)
   const [assignAttach, setAssignAttach] = useState(EMPTY_ATTACH)
   const [draftAttach, setDraftAttach] = useState(EMPTY_ATTACH)
+  const [directAttach, setDirectAttach] = useState(EMPTY_ATTACH)
   const [internalTab, setInternalTab] = useState('assign')
 
   const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
@@ -89,7 +90,8 @@ export default function FeedbackDetailPage() {
   })
 
   const approveMutation = useMutation({
-    mutationFn: () => api.post(`/api/feedbacks/${id}/approve`, { finalResponse: draftText, notifyAdmin }).then((r) => r.data),
+    // extra: đính kèm nội bộ từ block xử lý trực tiếp (superadmin), rỗng khi duyệt dự thảo thông thường
+    mutationFn: (extra = {}) => api.post(`/api/feedbacks/${id}/approve`, { finalResponse: draftText, notifyAdmin, ...extra }).then((r) => r.data),
     onSuccess: () => { toast.success('Đã duyệt và gửi phản hồi cho dân qua Zalo'); invalidate() },
     onError: (e) => toast.error(e.response?.data?.error || 'Lỗi duyệt'),
   })
@@ -367,11 +369,15 @@ export default function FeedbackDetailPage() {
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                 />
+                <div className="border-t pt-3">
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm tài liệu xử lý nội bộ (không gửi cho dân):</p>
+                  <AttachmentComposer value={directAttach} onChange={setDirectAttach} disabled={approveMutation.isPending} />
+                </div>
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {
                     if (!draftText.trim()) { toast.error('Vui lòng nhập nội dung phản hồi'); return }
-                    if (window.confirm('Gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate()
+                    if (window.confirm('Gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate(directAttach)
                   }}
                   disabled={approveMutation.isPending}
                 >

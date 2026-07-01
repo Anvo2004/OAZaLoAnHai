@@ -394,6 +394,9 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
     const finalResponse = req.body.finalResponse?.trim() || feedback.draftResponse.trim()
     const notifyAdmin = !!req.body.notifyAdmin
     const shortCode = feedback._id.toString().slice(-5).toUpperCase()
+    // Đính kèm nội bộ từ admin xử lý trực tiếp (chỉ lưu khi có nội dung)
+    const { note: attachNote, images, video, file } = req.body
+    const hasDirectAttach = !!(attachNote?.trim() || images?.length || video?.url || file?.url)
 
     // Gửi tin cho dân qua Zalo OA — có tiêu đề mã phản ánh
     const citizenMsg =
@@ -414,6 +417,17 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
       respondedAt: new Date(),
       respondedBy: req.user.id,
       updatedAt: new Date(),
+      // Lưu đính kèm nội bộ khi superadmin xử lý trực tiếp (không ghi đè nếu không có)
+      ...(hasDirectAttach && {
+        draftAttachments: {
+          note: attachNote?.trim() || '',
+          images: images || [],
+          video: video?.url ? video : { url: '', name: '' },
+          file: file?.url ? file : { url: '', name: '' },
+          sentBy: req.user.id,
+          sentAt: new Date(),
+        },
+      }),
     })
 
     // Thông báo vào nhóm
