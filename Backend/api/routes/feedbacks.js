@@ -6,7 +6,14 @@ const AdminUser = require('../../src/models/AdminUser')
 const Category = require('../../src/models/Category')
 const Notification = require('../../src/models/Notification')
 const requireRole = require('../middleware/requireRole')
-const { sendZaloText, sendZaloToGroup } = require('../../src/utils/zaloApi')
+const {
+  sendZaloText,
+  sendZaloToGroup,
+  sendZaloImages,
+  sendZaloFile,
+  uploadImageFromUrlToZalo,
+  uploadFileFromUrlToZalo
+} = require('../../src/utils/zaloApi')
 const { sendMail, buildFeedbackEmailHtml } = require('../../src/utils/mailer')
 const { getProfiles } = require('../../src/admin/profileCache')
 const { uploadBufferGeneric } = require('../../src/utils/cloudinary')
@@ -406,6 +413,47 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
       `${'─'.repeat(32)}\n` +
       `Cảm ơn bạn đã tin tưởng UBND phường An Hải!`
     await sendZaloText(feedback.userId, citizenMsg)
+
+    // Tự động gửi đính kèm (ảnh, video, file) cho người dân qua Zalo OA
+    const targetAttach = hasDirectAttach ? { images, video, file } : feedback.draftAttachments
+    if (targetAttach) {
+      // 1. Gửi hình ảnh
+      if (targetAttach.images && targetAttach.images.length > 0) {
+        try {
+          const zaloImgIds = []
+          for (const img of targetAttach.images) {
+            if (img.url) {
+              const imgId = await uploadImageFromUrlToZalo(img.url)
+              zaloImgIds.push(imgId)
+            }
+          }
+          if (zaloImgIds.length > 0) {
+            await sendZaloImages(feedback.userId, zaloImgIds)
+          }
+        } catch (e) {
+          console.error('[Zalo] Gửi ảnh đính kèm cho dân thất bại:', e.message)
+        }
+      }
+
+      // 2. Gửi video dưới dạng link
+      if (targetAttach.video && targetAttach.video.url) {
+        try {
+          await sendZaloText(feedback.userId, `📹 Video đính kèm phản hồi:\n${targetAttach.video.url}`)
+        } catch (e) {
+          console.error('[Zalo] Gửi link video cho dân thất bại:', e.message)
+        }
+      }
+
+      // 3. Gửi file tài liệu
+      if (targetAttach.file && targetAttach.file.url) {
+        try {
+          const fileToken = await uploadFileFromUrlToZalo(targetAttach.file.url, targetAttach.file.name || 'document.pdf')
+          await sendZaloFile(feedback.userId, fileToken)
+        } catch (e) {
+          console.error('[Zalo] Gửi file đính kèm cho dân thất bại:', e.message)
+        }
+      }
+    }
 
     await Feedback.findByIdAndUpdate(req.params.id, {
       finalResponse,

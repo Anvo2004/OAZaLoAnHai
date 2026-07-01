@@ -330,7 +330,7 @@ export default function FeedbackDetailPage() {
                   onChange={(e) => setDraftText(e.target.value)}
                 />
                 <div className="border-t pt-3">
-                  <p className="text-xs text-slate-500 mb-2">Đính kèm thêm thông tin xử lý (nội bộ, không gửi dân):</p>
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm hình ảnh, video, tài liệu gửi cho người dân (gửi kèm phản hồi sau khi duyệt):</p>
                   <AttachmentComposer value={draftAttach} onChange={setDraftAttach} disabled={draftMutation.isPending} />
                 </div>
                 <Button
@@ -370,14 +370,14 @@ export default function FeedbackDetailPage() {
                   onChange={(e) => setDraftText(e.target.value)}
                 />
                 <div className="border-t pt-3">
-                  <p className="text-xs text-slate-500 mb-2">Đính kèm tài liệu xử lý nội bộ (không gửi cho dân):</p>
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm hình ảnh, video, tài liệu gửi cho người dân:</p>
                   <AttachmentComposer value={directAttach} onChange={setDirectAttach} disabled={approveMutation.isPending} />
                 </div>
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {
                     if (!draftText.trim()) { toast.error('Vui lòng nhập nội dung phản hồi'); return }
-                    if (window.confirm('Gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate(directAttach)
+                    if (window.confirm('Gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate({ ...directAttach, sendToCitizen: true })
                   }}
                   disabled={approveMutation.isPending}
                 >
@@ -424,7 +424,7 @@ export default function FeedbackDetailPage() {
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {
                     if (!draftText.trim()) { toast.error('Nội dung phản hồi không được để trống'); return }
-                    if (window.confirm('Duyệt và gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate()
+                    if (window.confirm('Duyệt và gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate({ sendToCitizen: true })
                   }}
                   disabled={approveMutation.isPending}
                 >
@@ -475,7 +475,7 @@ export default function FeedbackDetailPage() {
                   ))}
                 </select>
                 <div className="border-t pt-3">
-                  <p className="text-xs text-slate-500 mb-2">Đính kèm thêm thông tin cho cán bộ xử lý:</p>
+                  <p className="text-xs text-slate-500 mb-2">Đính kèm thêm thông tin cho cán bộ xử lý (nội bộ):</p>
                   <AttachmentComposer value={assignAttach} onChange={setAssignAttach} disabled={assignMutation.isPending} />
                 </div>
                 <Button variant="secondary" className="w-full" onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>

@@ -458,6 +458,45 @@ async function rejectGroupJoinRequest(groupId, memberUserIds) {
   return true;
 }
 
+// Tải ảnh từ URL (ví dụ Cloudinary) và upload lên Zalo OA để lấy attachment_id
+async function uploadImageFromUrlToZalo(url) {
+  try {
+    const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 15000 });
+    const buffer = Buffer.from(res.data);
+    const filename = path.basename(url.split('?')[0]) || 'image.jpg';
+    return await uploadImageBufferToZalo(buffer, filename);
+  } catch (err) {
+    console.error(`[Zalo] Tải và upload ảnh thất bại từ URL ${url}:`, err.message);
+    throw err;
+  }
+}
+
+// Tải file từ URL (ví dụ Cloudinary) và upload lên Zalo OA để lấy file token
+async function uploadFileFromUrlToZalo(url, originalFilename) {
+  const os = require('os');
+  const crypto = require('crypto');
+  try {
+    const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
+    const buffer = Buffer.from(res.data);
+    const tempFilename = `temp_${crypto.randomBytes(4).toString('hex')}_${originalFilename.replace(/[^\w.-]/g, '_')}`;
+    const tempPath = path.join(os.tmpdir(), tempFilename);
+    fs.writeFileSync(tempPath, buffer);
+    try {
+      const token = await uploadFileToZalo(tempPath, originalFilename);
+      return token;
+    } finally {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (e) {
+        console.error('[Zalo] Lỗi xóa file tạm:', e.message);
+      }
+    }
+  } catch (err) {
+    console.error(`[Zalo] Tải và upload file thất bại từ URL ${url}:`, err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   sendZaloText,
   sendZaloLinkButton,
@@ -482,4 +521,6 @@ module.exports = {
   getPendingGroupMembers,
   acceptGroupJoinRequest,
   rejectGroupJoinRequest,
+  uploadImageFromUrlToZalo,
+  uploadFileFromUrlToZalo,
 };
