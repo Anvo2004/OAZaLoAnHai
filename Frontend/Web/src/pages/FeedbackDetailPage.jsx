@@ -38,7 +38,7 @@ export default function FeedbackDetailPage() {
   const isLeader = user?.role === 'superadmin' || user?.role === 'dept_leader'
   const isOfficer = user?.role === 'officer' || user?.role === 'staff'
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['feedback', id],
     queryFn: () => api.get(`/api/feedbacks/${id}`).then((r) => r.data),
   })
@@ -110,6 +110,20 @@ export default function FeedbackDetailPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    const status = error?.response?.status
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+        <p className="text-destructive text-base font-medium">
+          {status === 403 ? 'Bạn không có quyền xem phản ánh này' : 'Không tìm thấy phản ánh'}
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate('/feedbacks')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Quay lại danh sách
+        </Button>
       </div>
     )
   }
@@ -333,6 +347,37 @@ export default function FeedbackDetailPage() {
                     Dự thảo đã gửi, đang chờ lãnh đạo duyệt
                   </p>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* SUPERADMIN: Xử lý & gửi dân trực tiếp — không cần qua dự thảo cán bộ */}
+          {user?.role === 'superadmin' && !isResolved && !isDraft && (
+            <Card className="border-emerald-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-emerald-700">
+                  <Send className="h-4 w-4" /> Xử lý & Gửi dân trực tiếp
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-slate-500">Soạn phản hồi và gửi thẳng cho người dân qua Zalo — không cần qua bước dự thảo cán bộ:</p>
+                <Textarea
+                  rows={5}
+                  placeholder="Nhập nội dung phản hồi cho người dân..."
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                />
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    if (!draftText.trim()) { toast.error('Vui lòng nhập nội dung phản hồi'); return }
+                    if (window.confirm('Gửi phản hồi này cho người dân qua Zalo?')) approveMutation.mutate()
+                  }}
+                  disabled={approveMutation.isPending}
+                >
+                  {approveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Gửi phản hồi cho dân
+                </Button>
               </CardContent>
             </Card>
           )}

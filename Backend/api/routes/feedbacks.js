@@ -19,14 +19,13 @@ const LEADER_ROLES = ['superadmin', 'dept_leader']
 // Kiểm tra quyền truy cập 1 feedback cụ thể theo categoryId (dept_leader) / assignedTo (officer, staff)
 function canAccessFeedback(user, feedback) {
   if (user.role === 'superadmin') return true
+  // Ai được phân công xử lý thì luôn được xem — áp dụng mọi role
+  const assignedId = String(feedback.assignedTo?._id || feedback.assignedTo || '')
+  if (assignedId && assignedId === String(user.id)) return true
   if (user.role === 'dept_leader') {
     if (!user.categoryIds?.length) return true // leader chưa được gán category cụ thể -> quản lý chung
     const catId = String(feedback.categoryId?._id || feedback.categoryId || '')
     return user.categoryIds.some((id) => String(id) === catId)
-  }
-  if (user.role === 'officer' || user.role === 'staff') {
-    const assignedId = String(feedback.assignedTo?._id || feedback.assignedTo || '')
-    return !!assignedId && assignedId === String(user.id)
   }
   return false
 }
@@ -44,7 +43,11 @@ router.get('/', async (req, res) => {
     if (me.role === 'officer' || me.role === 'staff') {
       filter.assignedTo = me.id
     } else if (me.role === 'dept_leader' && me.categoryIds?.length) {
-      filter.categoryId = { $in: me.categoryIds }
+      // Xem theo danh mục phụ trách + phản ánh được phân công trực tiếp cho mình
+      filter.$or = [
+        { categoryId: { $in: me.categoryIds } },
+        { assignedTo: me.id },
+      ]
     }
 
     if (status) filter.status = status
@@ -54,12 +57,19 @@ router.get('/', async (req, res) => {
     if (q) {
       const cleanQ = q.replace(/^#/, '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const regex = new RegExp(cleanQ, 'i')
-      filter.$or = [
+      const searchOr = [
         { displayName: regex },
         { contact: regex },
         { content: regex },
         { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: cleanQ, options: 'i' } } },
       ]
+      // Nếu đã có $or từ access filter (dept_leader), kết hợp bằng $and để không ghi đè
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchOr }]
+        delete filter.$or
+      } else {
+        filter.$or = searchOr
+      }
     }
 
     const [feedbacks, total] = await Promise.all([
@@ -369,8 +379,12 @@ router.post('/:id/approve', requireRole('superadmin', 'dept_leader'), async (req
     if (!canAccessFeedback(req.user, feedback)) {
       return res.status(403).json({ error: 'Bạn không có quyền truy cập phản ánh này' })
     }
-    if (feedback.status !== 'draft') {
+    // dept_leader chỉ duyệt khi đã có dự thảo; superadmin được xử lý trực tiếp từ bất kỳ trạng thái nào
+    if (req.user.role !== 'superadmin' && feedback.status !== 'draft') {
       return res.status(400).json({ error: 'Chỉ duyệt được phản ánh ở trạng thái Dự thảo' })
+    }
+    if (feedback.status === 'resolved') {
+      return res.status(400).json({ error: 'Phản ánh đã được giải quyết' })
     }
     if (!feedback.draftResponse?.trim() && !req.body.finalResponse?.trim()) {
       return res.status(400).json({ error: 'Chưa có nội dung phản hồi' })
