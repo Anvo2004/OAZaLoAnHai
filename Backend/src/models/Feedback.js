@@ -45,6 +45,14 @@ const feedbackSchema = new mongoose.Schema({
   // Phản hồi cuối gửi dân
   finalResponse:  { type: String, default: '' },
   sentAt:         { type: Date, default: null },
+  // Đồng bộ sang Cổng góp ý 1022 (CGY) — xem src/services/cgy1022Service.js
+  cgy1022: {
+    synced:    { type: Boolean, default: false },
+    gopyId:    { type: String,  default: '' },
+    syncedAt:  { type: Date,    default: null },
+    attempts:  { type: Number,  default: 0 },
+    lastError: { type: String,  default: '' },
+  },
   // Legacy fields giữ tương thích
   response:       { type: String, default: '' },
   respondedAt:    { type: Date, default: null },

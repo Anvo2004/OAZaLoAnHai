@@ -452,6 +452,13 @@ async function saveFeedback(userId, state) {
     const targetGroupId = state.categoryGroupId;
     await sendZaloToGroup(groupMsg, targetGroupId);
 
+    // Đẩy sang Cổng góp ý 1022 — fire-and-forget, KHÔNG chặn luồng tiếp nhận;
+    // thất bại sẽ được cgy1022RetryService quét lại sau (mỗi 10 phút).
+    const { syncFeedbackById } = require('./cgy1022RetryService');
+    syncFeedbackById(feedback._id).catch((err) =>
+      console.error('[CGY1022] Lỗi đẩy phản ánh mới:', err.message)
+    );
+
     console.log(`[Feedback] Lưu góp ý userId=${userId} contact=${state.contact} category=${state.categoryName} images=${imageUrls.length}`);
   } catch (err) {
     console.error('[Feedback] Lưu DB thất bại:', err.message);

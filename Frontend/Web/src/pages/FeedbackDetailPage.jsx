@@ -158,6 +158,22 @@ export default function FeedbackDetailPage() {
               {fb.categoryId.icon} {fb.categoryId.name}
             </span>
           )}
+          {/* Trạng thái đồng bộ Cổng góp ý 1022 */}
+          {fb.cgy1022?.synced ? (
+            <span
+              className="text-xs text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full"
+              title={fb.cgy1022.gopyId ? `Mã trên 1022: ${fb.cgy1022.gopyId}` : 'Đã đồng bộ Cổng góp ý 1022'}
+            >
+              ☁️ 1022 ✓
+            </span>
+          ) : fb.cgy1022?.attempts > 0 ? (
+            <span
+              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full"
+              title={`Chờ đồng bộ 1022 — đã thử ${fb.cgy1022.attempts} lần${fb.cgy1022.lastError ? `: ${fb.cgy1022.lastError}` : ''}`}
+            >
+              ☁️ 1022 ⏳
+            </span>
+          ) : null}
           <StatusBadge status={fb.status} />
         </div>
       </div>

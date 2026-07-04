@@ -17,4 +17,17 @@ module.exports = {
   EMAIL_ADMIN: process.env.EMAIL_ADMIN || '',
   EMAIL_ADMIN_PASSWORD: process.env.EMAIL_ADMIN_PASSWORD || '',
   DASHBOARD_URL: process.env.DASHBOARD_URL || '',
+
+  // Cổng góp ý 1022 (CGY - Green Global) — đồng bộ phản ánh sang hệ thống thành phố.
+  // Toàn bộ đọc từ .env; thiếu BASE_URL/USERNAME/PASSWORD thì tính năng tự tắt.
+  CGY1022_BASE_URL: process.env.CGY1022_BASE_URL || '',
+  CGY1022_USERNAME: process.env.CGY1022_USERNAME || '',
+  CGY1022_PASSWORD: process.env.CGY1022_PASSWORD || '',
+  CGY1022_LOGIN_PATH: process.env.CGY1022_LOGIN_PATH || '/admin/login',
+  CGY1022_USER_ID: process.env.CGY1022_USER_ID || '0',
+  CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || 'gopy@anhai.dxvtech.vn',
+  CGY1022_NGUON: process.env.CGY1022_NGUON || 'ZALO OA Phường An Hải',
+  // JSON map tên danh mục An Hải → linhVucId của 1022, VD: {"Môi trường, Hạ tầng, Xây dựng": 4}
+  CGY1022_LINHVUC_MAP: process.env.CGY1022_LINHVUC_MAP || '{}',
+  CGY1022_LINHVUC_DEFAULT: process.env.CGY1022_LINHVUC_DEFAULT || '',
 };
