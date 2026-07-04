@@ -18,12 +18,13 @@ module.exports = {
   EMAIL_ADMIN_PASSWORD: process.env.EMAIL_ADMIN_PASSWORD || '',
   DASHBOARD_URL: process.env.DASHBOARD_URL || '',
 
-  // Cổng góp ý 1022 (CGY - Green Global) — đồng bộ phản ánh sang hệ thống thành phố.
+  // Cổng góp ý 1022 (gopy.danang.gov.vn) — đồng bộ phản ánh sang hệ thống thành phố.
+  // Xác thực: HTTP Basic Auth. Bắt buộc User-Agent trình duyệt (WAF chặn UA lạ).
   // Toàn bộ đọc từ .env; thiếu BASE_URL/USERNAME/PASSWORD thì tính năng tự tắt.
   CGY1022_BASE_URL: process.env.CGY1022_BASE_URL || '',
   CGY1022_USERNAME: process.env.CGY1022_USERNAME || '',
   CGY1022_PASSWORD: process.env.CGY1022_PASSWORD || '',
-  CGY1022_LOGIN_PATH: process.env.CGY1022_LOGIN_PATH || '/admin/login',
+  CGY1022_GOPY_PATH: process.env.CGY1022_GOPY_PATH || '/api/gopy',
   CGY1022_USER_ID: process.env.CGY1022_USER_ID || '0',
   CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || 'gopy@anhai.dxvtech.vn',
   CGY1022_NGUON: process.env.CGY1022_NGUON || 'ZALO OA Phường An Hải',

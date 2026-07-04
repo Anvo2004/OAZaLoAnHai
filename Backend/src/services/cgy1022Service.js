@@ -2,18 +2,30 @@ const axios = require('axios');
 const CONFIG = require('../config');
 
 // ============================================================
-// Đồng bộ phản ánh sang Cổng góp ý 1022 (CGY - Green Global)
-// Tài liệu: Document/Nâng Cấp CGY-Tài liệu mô tả API.md
-// - Đăng nhập: POST {BASE_URL}{LOGIN_PATH} {tenDangNhap, matKhau} → {access_token}
-// - Đẩy góp ý: POST {BASE_URL}/public/gopy (Bearer token)
+// Đồng bộ phản ánh sang Cổng góp ý 1022 (gopy.danang.gov.vn)
+// Cơ chế THẬT (đã probe production, khác tài liệu 2022):
+// - Xác thực: HTTP Basic Auth (username/password) trên mỗi request — KHÔNG có JWT.
+// - Đẩy góp ý: POST {BASE_URL}{GOPY_PATH}  (mặc định /api/gopy)
+// - BẮT BUỘC User-Agent trình duyệt, nếu không WAF trả 403.
+// - KHÔNG ép Accept: application/json (server trả 406) — để Accept: */*.
 // Nguyên tắc: KHÔNG được chặn luồng tiếp nhận phản ánh của người dân —
 // mọi lỗi ở đây chỉ log + đánh dấu chưa sync để retry job xử lý sau.
 // ============================================================
 
 const TIMEOUT_MS = 10000;
+// UA trình duyệt để vượt WAF của gopy.danang.gov.vn
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-// Cache token trong RAM: { token, expiresAt }
-let tokenCache = null;
+function authHeaders() {
+  return {
+    'User-Agent': USER_AGENT,
+    Accept: '*/*',
+  };
+}
+
+function basicAuth() {
+  return { username: CONFIG.CGY1022_USERNAME, password: CONFIG.CGY1022_PASSWORD };
+}
 
 function isConfigured() {
   return Boolean(CONFIG.CGY1022_BASE_URL && CONFIG.CGY1022_USERNAME && CONFIG.CGY1022_PASSWORD);
@@ -30,39 +42,7 @@ function getLinhVucId(categoryName) {
   return CONFIG.CGY1022_LINHVUC_DEFAULT !== '' ? Number(CONFIG.CGY1022_LINHVUC_DEFAULT) : null;
 }
 
-// Giải mã phần payload của JWT để lấy hạn token (exp); lỗi thì coi như sống 30 phút
-function decodeTokenExpiry(token) {
-  try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
-    if (payload.exp) return payload.exp * 1000;
-  } catch (e) { /* token không phải JWT chuẩn */ }
-  return Date.now() + 30 * 60 * 1000;
-}
-
-async function login() {
-  const url = `${CONFIG.CGY1022_BASE_URL}${CONFIG.CGY1022_LOGIN_PATH}`;
-  const res = await axios.post(url, {
-    tenDangNhap: CONFIG.CGY1022_USERNAME,
-    matKhau: CONFIG.CGY1022_PASSWORD,
-  }, { timeout: TIMEOUT_MS });
-
-  const token = res.data?.access_token;
-  if (!token) throw new Error(`Đăng nhập CGY không trả access_token (HTTP ${res.status})`);
-
-  tokenCache = { token, expiresAt: decodeTokenExpiry(token) };
-  console.log('[CGY1022] Đăng nhập thành công, token hạn tới', new Date(tokenCache.expiresAt).toISOString());
-  return token;
-}
-
-// Lấy token còn hạn (trừ hao 60s); hết hạn thì đăng nhập lại
-async function getToken(forceRefresh = false) {
-  if (!forceRefresh && tokenCache && tokenCache.expiresAt - 60000 > Date.now()) {
-    return tokenCache.token;
-  }
-  return login();
-}
-
-// Map document Feedback (đã populate categoryId) → body POST /public/gopy theo tài liệu
+// Map document Feedback (đã populate categoryId) → body POST /api/gopy
 function buildPayload(fb) {
   const categoryName = fb.categoryId?.name || '';
   const created = new Date(fb.createdAt || Date.now());
@@ -111,29 +91,15 @@ async function pushFeedback(fb) {
     return { ok: false, error: `Chưa map linhVucId cho danh mục "${fb.categoryId?.name || '?'}"` };
   }
 
-  const url = `${CONFIG.CGY1022_BASE_URL}/public/gopy`;
+  const url = `${CONFIG.CGY1022_BASE_URL}${CONFIG.CGY1022_GOPY_PATH}`;
   try {
-    let token = await getToken();
-    let res;
-    try {
-      res = await axios.post(url, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: TIMEOUT_MS,
-      });
-    } catch (err) {
-      // Token hết hạn giữa chừng → re-login đúng 1 lần rồi thử lại
-      if (err.response?.status === 401) {
-        token = await getToken(true);
-        res = await axios.post(url, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: TIMEOUT_MS,
-        });
-      } else {
-        throw err;
-      }
-    }
+    const res = await axios.post(url, payload, {
+      auth: basicAuth(),
+      headers: authHeaders(),
+      timeout: TIMEOUT_MS,
+    });
 
-    // Tài liệu không mô tả rõ body trả về — nhận diện id linh hoạt, 2xx coi là thành công
+    // Nhận diện id linh hoạt, 2xx coi là thành công
     const gopyId = String(res.data?.id ?? res.data?.data?.id ?? res.data?.yKienId ?? '');
     console.log(`[CGY1022] Đẩy phản ánh ${payload.tieuDe.slice(-6)} thành công${gopyId ? ` (gopyId=${gopyId})` : ''}`);
     return { ok: true, gopyId };
@@ -146,4 +112,16 @@ async function pushFeedback(fb) {
   }
 }
 
-module.exports = { isConfigured, pushFeedback, buildPayload, getToken, getLinhVucId };
+// GET danh sách phản ánh (read-only) — dùng để probe/verify kết nối mà không ghi gì.
+async function listFeedbacks({ page = 1, size = 5, keyword = '' } = {}) {
+  const url = `${CONFIG.CGY1022_BASE_URL}${CONFIG.CGY1022_GOPY_PATH}`;
+  const res = await axios.get(url, {
+    auth: basicAuth(),
+    headers: authHeaders(),
+    params: { page, size, keyword },
+    timeout: TIMEOUT_MS,
+  });
+  return res.data;
+}
+
+module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, listFeedbacks };
