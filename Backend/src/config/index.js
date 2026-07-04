@@ -27,7 +27,8 @@ module.exports = {
   CGY1022_GOPY_PATH: process.env.CGY1022_GOPY_PATH || '/api/gopy',
   CGY1022_USER_ID: process.env.CGY1022_USER_ID || '0',
   CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || 'gopy@anhai.dxvtech.vn',
-  CGY1022_NGUON: process.env.CGY1022_NGUON || 'ZALO OA Phường An Hải',
+  // "Zalo" là kênh duy nhất được 1022 đăng ký sẵn (nguonGopY khác → 404 "does not exist")
+  CGY1022_NGUON: process.env.CGY1022_NGUON || 'Zalo',
   // JSON map tên danh mục An Hải → linhVucId của 1022, VD: {"Môi trường, Hạ tầng, Xây dựng": 4}
   CGY1022_LINHVUC_MAP: process.env.CGY1022_LINHVUC_MAP || '{}',
   CGY1022_LINHVUC_DEFAULT: process.env.CGY1022_LINHVUC_DEFAULT || '',
