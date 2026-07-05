@@ -54,9 +54,10 @@ function buildPayload(fb) {
   const ngayDienRa = `${pad(vn.getDate())}/${pad(vn.getMonth() + 1)}/${vn.getFullYear()}`;
   const thoiGianDienRa = `${pad(vn.getHours())}:${pad(vn.getMinutes())}`;
 
+  // Tiêu đề = tóm tắt nội dung + mã tra cứu. KHÔNG chèn tên loại (lĩnh vực đã có
+  // cột riêng trên 1022, và tên loại có tiền tố "An Hải_" gây rối tiêu đề).
   const content = fb.content || '';
-  const tieuDePrefix = categoryName ? `[${categoryName}] ` : '';
-  const tieuDe = `${tieuDePrefix}${content.slice(0, 60)}${content.length > 60 ? '…' : ''} #${shortCode}`;
+  const tieuDe = `${content.slice(0, 100)}${content.length > 100 ? '…' : ''} #${shortCode}`;
 
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 
