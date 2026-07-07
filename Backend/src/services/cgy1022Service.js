@@ -34,7 +34,18 @@ function isConfigured() {
 // Chỉ hiện SĐT công dân trên 1022 với các loại phản ánh cần liên hệ trực tiếp
 // (hạ tầng/môi trường cần xác minh hiện trường, an ninh trật tự cần phản hồi khẩn).
 // Các loại còn lại (văn hoá-giáo dục-y tế, dịch vụ công) ẩn SĐT để bảo vệ riêng tư.
-const SHOW_PHONE_CATEGORIES = ['Môi trường, Hạ tầng, Xây dựng', 'An ninh trật tự, PCCC'];
+// So theo linhVucId (đã map ổn định qua CGY1022_LINHVUC_MAP) thay vì tên category —
+// tên category trên từng deployment có thể khác chuỗi hardcode (đã có tiền tố tuỳ biến
+// như "An Hải_..." trên production), trong khi linhVucId 1022 (1=Hạ tầng đô thị,
+// 21=An ninh trật tự) là cố định phía 1022.
+function getShowPhoneLinhVucSet() {
+  return new Set(
+    String(CONFIG.CGY1022_SHOW_PHONE_LINHVUC || '')
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n))
+  );
+}
 
 // Đọc map lĩnh vực từ env (JSON: tên danh mục An Hải → linhVucId 1022)
 function getLinhVucId(categoryName) {
@@ -66,7 +77,8 @@ function buildPayload(fb) {
 
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 
-  const showPhone = SHOW_PHONE_CATEGORIES.includes(categoryName);
+  const linhVucId = getLinhVucId(categoryName);
+  const showPhone = linhVucId != null && getShowPhoneLinhVucSet().has(linhVucId);
 
   const payload = {
     userId: Number(CONFIG.CGY1022_USER_ID) || 0,
@@ -82,7 +94,7 @@ function buildPayload(fb) {
     amThanh: '',
     hinhAnhs: imageUrls.map((url, i) => ({ url, ten: `Ảnh phản ánh ${i + 1}` })),
     fileDinhKem: { url: '', ten: '' },
-    linhVucId: getLinhVucId(categoryName),
+    linhVucId,
     nguonGopY: CONFIG.CGY1022_NGUON,
   };
 

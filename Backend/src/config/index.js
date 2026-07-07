@@ -32,4 +32,8 @@ module.exports = {
   // JSON map tên danh mục An Hải → linhVucId của 1022, VD: {"Môi trường, Hạ tầng, Xây dựng": 4}
   CGY1022_LINHVUC_MAP: process.env.CGY1022_LINHVUC_MAP || '{}',
   CGY1022_LINHVUC_DEFAULT: process.env.CGY1022_LINHVUC_DEFAULT || '',
+  // Danh sách linhVucId 1022 được hiện SĐT công dân (cách nhau dấu phẩy).
+  // Mặc định 1 = Hạ tầng đô thị, 21 = An ninh trật tự (theo Document/TichHop_1022_TomTat.md) —
+  // các lĩnh vực còn lại ẩn SĐT để bảo vệ riêng tư trên cổng công khai.
+  CGY1022_SHOW_PHONE_LINHVUC: process.env.CGY1022_SHOW_PHONE_LINHVUC || '1,21',
 };
