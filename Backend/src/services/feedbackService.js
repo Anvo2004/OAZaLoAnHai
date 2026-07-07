@@ -223,7 +223,7 @@ async function handleText(userId, text, displayName) {
     setState(userId, {
       ...state,
       step: 'waiting_image',
-      location: { address: addr, lat: geo?.lat ?? null, lng: geo?.lng ?? null },
+      location: { address: addr, lat: geo?.lat ?? null, lng: geo?.lng ?? null, source: 'manual' },
       imageUrls: [],
     });
     await sendZaloText(userId, `✅ Đã ghi nhận địa chỉ: ${addr}`);
@@ -475,7 +475,7 @@ async function handleLocation(userId, { lat, lng, address }) {
   setState(userId, {
     ...state,
     step: 'waiting_image',
-    location: { address: addr, lat: Number(lat), lng: Number(lng) },
+    location: { address: addr, lat: Number(lat), lng: Number(lng), source: 'gps' },
     imageUrls: [],
   });
   await sendZaloText(userId, `✅ Đã ghi nhận vị trí: ${addr}`);

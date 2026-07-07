@@ -31,6 +31,11 @@ function isConfigured() {
   return Boolean(CONFIG.CGY1022_BASE_URL && CONFIG.CGY1022_USERNAME && CONFIG.CGY1022_PASSWORD);
 }
 
+// Chỉ hiện SĐT công dân trên 1022 với các loại phản ánh cần liên hệ trực tiếp
+// (hạ tầng/môi trường cần xác minh hiện trường, an ninh trật tự cần phản hồi khẩn).
+// Các loại còn lại (văn hoá-giáo dục-y tế, dịch vụ công) ẩn SĐT để bảo vệ riêng tư.
+const SHOW_PHONE_CATEGORIES = ['Môi trường, Hạ tầng, Xây dựng', 'An ninh trật tự, PCCC'];
+
 // Đọc map lĩnh vực từ env (JSON: tên danh mục An Hải → linhVucId 1022)
 function getLinhVucId(categoryName) {
   try {
@@ -61,16 +66,16 @@ function buildPayload(fb) {
 
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 
-  return {
+  const showPhone = SHOW_PHONE_CATEGORIES.includes(categoryName);
+
+  const payload = {
     userId: Number(CONFIG.CGY1022_USER_ID) || 0,
     tenDayDu: fb.displayName || 'Người dân phường An Hải',
     email: CONFIG.CGY1022_DEFAULT_EMAIL,
-    soDienThoai: fb.contact || '',
+    soDienThoai: showPhone ? (fb.contact || '') : '',
     tieuDe,
     noiDungYKien: content,
     noiDienRa: fb.location?.address || 'Phường An Hải, Đà Nẵng',
-    latitude: fb.location?.lat ?? 0,
-    longitude: fb.location?.lng ?? 0,
     ngayDienRa,
     thoiGianDienRa,
     videos: '',
@@ -80,6 +85,16 @@ function buildPayload(fb) {
     linhVucId: getLinhVucId(categoryName),
     nguonGopY: CONFIG.CGY1022_NGUON,
   };
+
+  // Chỉ gửi tọa độ khi là vị trí GPS dân xác nhận thật (source: 'gps') — tọa độ suy ra
+  // từ geocode tự động lúc dân gõ địa chỉ tay (source: 'manual') chỉ là ước lượng, không
+  // gửi lên để tránh 1022 ghim sai vị trí. Không gửi 0,0 giả khi dân bỏ qua vị trí.
+  if (fb.location?.source === 'gps' && Number.isFinite(fb.location?.lat) && Number.isFinite(fb.location?.lng)) {
+    payload.latitude = fb.location.lat;
+    payload.longitude = fb.location.lng;
+  }
+
+  return payload;
 }
 
 // Đẩy 1 phản ánh lên 1022. Trả { ok: true, gopyId } hoặc { ok: false, error }
@@ -125,4 +140,17 @@ async function listFeedbacks({ page = 1, size = 5, keyword = '' } = {}) {
   return res.data;
 }
 
-module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, listFeedbacks };
+// GET chi tiết 1 phản ánh theo gopyId (read-only) — dùng để theo dõi tình trạng xử lý.
+// Trả nguyên response thô, KHÔNG giả định cấu trúc field (tài liệu 2022 đã lệch so với
+// production — xem cgy1022StatusService.js để biết cách diễn giải).
+async function getFeedbackDetail(gopyId) {
+  const url = `${CONFIG.CGY1022_BASE_URL}${CONFIG.CGY1022_GOPY_PATH}/${gopyId}`;
+  const res = await axios.get(url, {
+    auth: basicAuth(),
+    headers: authHeaders(),
+    timeout: TIMEOUT_MS,
+  });
+  return res.data;
+}
+
+module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, listFeedbacks, getFeedbackDetail };

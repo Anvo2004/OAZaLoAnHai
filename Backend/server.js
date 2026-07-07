@@ -86,6 +86,7 @@ mongoose.connect(CONFIG.MONGO_URI)
     require('./src/admin/scheduledMessageService').startScheduledMessageRunner();
     require('./src/services/deadlineReminderService').startDeadlineReminder();
     require('./src/services/cgy1022RetryService').startCgy1022Retry();
+    require('./src/services/cgy1022StatusService').startCgy1022StatusPoll();
   })
   .catch(err => console.error('[MongoDB] Lỗi kết nối:', err.message));
 

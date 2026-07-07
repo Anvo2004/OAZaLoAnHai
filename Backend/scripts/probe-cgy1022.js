@@ -1,7 +1,8 @@
 // ============================================================
 // Probe API Cổng góp ý 1022 (gopy.danang.gov.vn) — read-only.
 //
-//   node scripts/probe-cgy1022.js          → GET danh sách phản ánh (KHÔNG ghi gì)
+//   node scripts/probe-cgy1022.js               → GET danh sách phản ánh (KHÔNG ghi gì)
+//   node scripts/probe-cgy1022.js detail <id>   → GET chi tiết 1 gopyId (KHÔNG ghi gì)
 //
 // Xác thực: HTTP Basic Auth + User-Agent trình duyệt (đã cấu hình trong service).
 // ⚠️ KHÔNG có chế độ gửi thử: gopy.danang.gov.vn là hệ CHÍNH THỨC —
@@ -15,6 +16,27 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const cgy = require('../src/services/cgy1022Service');
 const CONFIG = require('../src/config');
 
+async function probeList() {
+  const data = await cgy.listFeedbacks({ page: 1, size: 3 });
+  const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+  console.log(`✅ Kết nối OK — nhận ${items.length} phản ánh gần nhất:`);
+  items.forEach((it, i) => {
+    console.log(`\n  ${i + 1}. [${it.tinhTrangXuLy || '?'}] ${it.tieuDe || ''}`);
+    console.log(`     Lĩnh vực: ${it.tenChuDe || '?'} | Cơ quan: ${it.tenCoQuan || '?'} | ${it.ngayDienRa || ''}`);
+  });
+  console.log('\nℹ️  Đây là dữ liệu THẬT trên hệ thống thành phố (read-only). Không ghi gì lên.');
+}
+
+async function probeDetail(gopyId) {
+  if (!gopyId) {
+    console.error('❌ Thiếu gopyId. Dùng: node scripts/probe-cgy1022.js detail <id>');
+    process.exit(1);
+  }
+  const data = await cgy.getFeedbackDetail(gopyId);
+  console.log(`✅ Chi tiết gopyId=${gopyId}:\n`);
+  console.log(JSON.stringify(data, null, 2));
+}
+
 (async () => {
   if (!cgy.isConfigured()) {
     console.error('❌ Thiếu CGY1022_BASE_URL / USERNAME / PASSWORD trong Backend/.env');
@@ -23,14 +45,9 @@ const CONFIG = require('../src/config');
   console.log('BASE_URL:', CONFIG.CGY1022_BASE_URL + CONFIG.CGY1022_GOPY_PATH);
 
   try {
-    const data = await cgy.listFeedbacks({ page: 1, size: 3 });
-    const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-    console.log(`✅ Kết nối OK — nhận ${items.length} phản ánh gần nhất:`);
-    items.forEach((it, i) => {
-      console.log(`\n  ${i + 1}. [${it.tinhTrangXuLy || '?'}] ${it.tieuDe || ''}`);
-      console.log(`     Lĩnh vực: ${it.tenChuDe || '?'} | Cơ quan: ${it.tenCoQuan || '?'} | ${it.ngayDienRa || ''}`);
-    });
-    console.log('\nℹ️  Đây là dữ liệu THẬT trên hệ thống thành phố (read-only). Không ghi gì lên.');
+    const [, , cmd, arg] = process.argv;
+    if (cmd === 'detail') await probeDetail(arg);
+    else await probeList();
   } catch (err) {
     const d = err.response ? `HTTP ${err.response.status}: ${JSON.stringify(err.response.data).slice(0, 200)}` : err.message;
     console.error('❌ Lỗi:', d);

@@ -14,7 +14,7 @@ import StatusBadge from '@/components/feedback/StatusBadge'
 import ImageGallery from '@/components/feedback/ImageGallery'
 import AttachmentComposer from '@/components/feedback/AttachmentComposer'
 import AttachmentViewer from '@/components/feedback/AttachmentViewer'
-import { formatDate, cn } from '@/lib/utils'
+import { formatDate, cn, getFeedbackCode } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const EMPTY_ATTACH = { note: '', images: [], video: { url: '', name: '' }, file: { url: '', name: '' } }
@@ -134,7 +134,7 @@ export default function FeedbackDetailPage() {
 
   if (!fb) return <p className="text-destructive">Không tìm thấy góp ý</p>
 
-  const shortCode = fb._id.slice(-5).toUpperCase()
+  const { code: shortCode, official: hasOfficialCode } = getFeedbackCode(fb)
   const isDraft = fb.status === 'draft'
   const isResolved = fb.status === 'resolved'
 
@@ -148,7 +148,15 @@ export default function FeedbackDetailPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold">Chi tiết phản ánh <span className="text-emerald-600 font-mono">#{shortCode}</span></h1>
+          <h1 className="text-xl font-bold">
+            Chi tiết phản ánh{' '}
+            <span
+              className="text-emerald-600 font-mono"
+              title={hasOfficialCode ? 'Mã trên Cổng góp ý 1022' : 'Mã nội bộ — chưa đồng bộ 1022'}
+            >
+              #{shortCode}
+            </span>
+          </h1>
           <p className="text-xs text-muted-foreground">{fb._id}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">

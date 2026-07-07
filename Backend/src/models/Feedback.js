@@ -14,6 +14,9 @@ const locationSchema = new mongoose.Schema({
   address: { type: String, default: '' },
   lat:     { type: Number, default: null },
   lng:     { type: Number, default: null },
+  // Nguồn tọa độ: 'gps' = dân chia sẻ vị trí thật (Zalo/mini-web), 'manual' = geocode tự động
+  // từ địa chỉ gõ tay (chỉ là ước lượng). Dùng để quyết định có đẩy tọa độ lên 1022 hay không.
+  source:  { type: String, enum: ['manual', 'gps', ''], default: '' },
 }, { _id: false });
 
 const feedbackSchema = new mongoose.Schema({
@@ -52,6 +55,9 @@ const feedbackSchema = new mongoose.Schema({
     syncedAt:  { type: Date,    default: null },
     attempts:  { type: Number,  default: 0 },
     lastError: { type: String,  default: '' },
+    // Theo dõi ngược trạng thái xử lý từ 1022 — xem src/services/cgy1022StatusService.js
+    resultNotifiedAt: { type: Date,   default: null },
+    resultStatus:     { type: String, default: '' },
   },
   // Legacy fields giữ tương thích
   response:       { type: String, default: '' },

@@ -1,5 +1,6 @@
 const Feedback = require('../models/Feedback');
 const cgy1022 = require('./cgy1022Service');
+const { sendZaloText } = require('../utils/zaloApi');
 
 // ============================================================
 // Retry đồng bộ phản ánh → Cổng góp ý 1022.
@@ -25,6 +26,11 @@ async function syncFeedbackById(feedbackId) {
       'cgy1022.syncedAt': new Date(),
       'cgy1022.lastError': '',
     });
+    // Báo thêm mã tra cứu chính thức cho dân — fire-and-forget, không chặn luồng sync
+    if (r.gopyId && fb.userId) {
+      sendZaloText(fb.userId, `📌 Mã tra cứu chính thức trên Cổng góp ý 1022: #${r.gopyId}`)
+        .catch((err) => console.error('[CGY1022] Lỗi gửi mã tra cứu cho dân:', err.message));
+    }
   } else {
     await Feedback.updateOne({ _id: feedbackId }, {
       $inc: { 'cgy1022.attempts': 1 },

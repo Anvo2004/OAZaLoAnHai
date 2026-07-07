@@ -26,6 +26,13 @@ const AVATAR_PALETTE = [
   'from-fuchsia-500 to-pink-400',
 ]
 
+// Mã tra cứu hiển thị: ưu tiên mã chính thức trên Cổng góp ý 1022 (fb.cgy1022.gopyId) sau khi
+// đồng bộ xong; trước đó dùng mã nội bộ (5 ký tự cuối _id) làm dự phòng.
+export function getFeedbackCode(fb) {
+  if (fb.cgy1022?.gopyId) return { code: fb.cgy1022.gopyId, official: true }
+  return { code: fb._id.slice(-5).toUpperCase(), official: false }
+}
+
 // Màu avatar ổn định theo seed (vd. userId) — cùng 1 người luôn ra cùng 1 màu ở mọi trang
 export function getAvatarColor(seed = '') {
   let hash = 0

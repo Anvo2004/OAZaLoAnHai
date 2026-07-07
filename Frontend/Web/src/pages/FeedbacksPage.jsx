@@ -5,7 +5,7 @@ import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox } from '
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import StatusBadge from '@/components/feedback/StatusBadge'
-import { formatDateShort, getAvatarColor } from '@/lib/utils'
+import { formatDateShort, getAvatarColor, getFeedbackCode } from '@/lib/utils'
 
 const STATUS_OPTIONS = [
   { value: '',         label: 'Tất cả trạng thái' },
@@ -154,13 +154,18 @@ export default function FeedbacksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {feedbacks.map((fb, i) => (
+                {feedbacks.map((fb, i) => {
+                  const { code, official } = getFeedbackCode(fb)
+                  return (
                   <tr key={fb._id} className="hover:bg-emerald-50/40 transition-colors duration-300 group">
                     <td className="px-4 py-3.5 text-slate-300 text-xs font-mono">
                       {(page - 1) * 20 + i + 1}
                     </td>
-                    <td className="px-4 py-3.5 text-xs font-mono font-semibold text-emerald-600">
-                      #{fb._id.slice(-5).toUpperCase()}
+                    <td
+                      className="px-4 py-3.5 text-xs font-mono font-semibold text-emerald-600"
+                      title={official ? 'Mã trên Cổng góp ý 1022' : 'Mã nội bộ — chưa đồng bộ 1022'}
+                    >
+                      #{code}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
@@ -224,7 +229,8 @@ export default function FeedbacksPage() {
                       </Link>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
