@@ -70,10 +70,13 @@ function buildPayload(fb) {
   const ngayDienRa = `${pad(vn.getDate())}/${pad(vn.getMonth() + 1)}/${vn.getFullYear()}`;
   const thoiGianDienRa = `${pad(vn.getHours())}:${pad(vn.getMinutes())}`;
 
-  // Tiêu đề = tóm tắt nội dung + mã tra cứu. KHÔNG chèn tên loại (lĩnh vực đã có
-  // cột riêng trên 1022, và tên loại có tiền tố "An Hải_" gây rối tiêu đề).
+  // Tiêu đề: ưu tiên tiêu đề dân tự nhập trên ReportApp. Fallback (tóm tắt nội dung + mã tra
+  // cứu) chỉ áp dụng cho phản ánh cũ gửi qua chatbot — không có ô tiêu đề riêng. KHÔNG chèn
+  // tên loại (lĩnh vực đã có cột riêng trên 1022, và tên loại có tiền tố "An Hải_" gây rối).
   const content = fb.content || '';
-  const tieuDe = `${content.slice(0, 100)}${content.length > 100 ? '…' : ''} #${shortCode}`;
+  const tieuDe = fb.title?.trim()
+    ? fb.title.trim()
+    : `${content.slice(0, 100)}${content.length > 100 ? '…' : ''} #${shortCode}`;
 
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 

@@ -81,7 +81,28 @@ function isUrl(text) {
   return /^https?:\/\/.+/i.test(text.trim());
 }
 
-// Bắt đầu luồng góp ý
+function isEmail(text) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
+}
+
+// Thay cho startFeedback() — luồng góp ý nay chuyển sang ReportApp (form web), chatbot chỉ
+// còn nhiệm vụ mở link. startFeedback/saveFeedback (hội thoại cũ) vẫn giữ nguyên, không xoá,
+// để không phá hội thoại đang dở của người dùng cũ nếu còn state tồn đọng.
+async function promptReportApp(userId) {
+  if (!CONFIG.REPORT_APP_URL) {
+    await sendZaloText(userId, '⚠️ Tính năng góp ý đang được nâng cấp, vui lòng thử lại sau.');
+    return;
+  }
+  await sendZaloLinkButton(
+    userId,
+    '📝 Gửi góp ý - Phản ánh',
+    'Nhấn nút bên dưới để mở form gửi góp ý / phản ánh tới UBND phường An Hải.',
+    '✍️ Mở form góp ý',
+    CONFIG.REPORT_APP_URL,
+  );
+}
+
+// Bắt đầu luồng góp ý (hội thoại cũ — giữ lại, không còn là lối vào chính, xem promptReportApp)
 async function startFeedback(userId, displayName = '') {
   // Nếu webhook không trả display_name → chủ động gọi API lấy tên ngay
   let name = displayName;
@@ -164,7 +185,7 @@ async function handleText(userId, text, displayName) {
   }
 
   if (!state) {
-    if (isFeedbackTrigger(text)) await startFeedback(userId);
+    if (isFeedbackTrigger(text)) await promptReportApp(userId);
     return;
   }
 
@@ -485,6 +506,82 @@ async function saveFeedback(userId, state) {
   }
 }
 
+// Tạo phản ánh từ ReportApp (form web) — khác saveFeedback() ở 2 điểm:
+// 1) Đẩy 1022 ĐỒNG BỘ (await syncFeedbackById) để trả mã thật ngay cho route gọi hàm này,
+//    thay vì fire-and-forget như luồng chatbot.
+// 2) Có title do dân tự nhập (dùng thẳng làm tieuDe 1022 — xem cgy1022Service.js buildPayload()).
+// Không chặn việc lưu phản ánh nếu 1022 lỗi/timeout — trả sync.ok=false, cgy1022RetryService
+// (đã chạy nền sẵn) sẽ tự đẩy lại và nhắn Zalo mã thật cho dân khi thành công.
+async function createFeedbackEntry({
+  userId, displayName, contact, content, title,
+  categoryId, categoryName, categoryGroupId, imageUrls = [], location,
+}) {
+  // Vị trí GPS không kèm tên địa điểm → tự reverse geocode (cùng hàm dùng cho chatbot)
+  let loc = location || {};
+  if (loc.source === 'gps' && !loc.address && loc.lat != null && loc.lng != null) {
+    const addr = await reverseGeocodeAddress(loc.lat, loc.lng);
+    if (addr) loc = { ...loc, address: addr };
+  }
+
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 5);
+
+  const feedback = await Feedback.create({
+    userId,
+    displayName: displayName || '',
+    contact,
+    title,
+    content,
+    location: loc,
+    imageUrl: imageUrls[0] || '',
+    imageUrls,
+    categoryId: categoryId || null,
+    deadline,
+  });
+
+  // Đồng bộ 1022 NGAY — route gọi hàm này cần biết kết quả để trả mã thật cho dân.
+  const { syncFeedbackById } = require('./cgy1022RetryService');
+  const sync = await syncFeedbackById(feedback._id);
+
+  const codeInfo = sync.ok && sync.gopyId
+    ? `Mã tra cứu (Cổng góp ý 1022): #${sync.gopyId}`
+    : 'Mã tra cứu đang được đồng bộ, chúng tôi sẽ nhắn Zalo báo mã cho bạn ngay khi có.';
+
+  await sendZaloText(userId,
+    '✅ Đã tiếp nhận phản ánh!\n\n' +
+    `📌 Tiêu đề: ${title}\n` +
+    `${codeInfo}\n\n` +
+    'Cảm ơn bạn!'
+  );
+
+  const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
+  const catInfo = categoryName ? `🏷️ Loại: ${categoryName}\n` : '';
+  const locationInfo = loc.address ? `📍 Địa chỉ: ${loc.address}\n` : '';
+  const imageInfo = imageUrls.length > 0
+    ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
+    : '🖼️ Ảnh: Không có';
+  const codeLine = sync.ok && sync.gopyId ? `🆔 Mã 1022: #${sync.gopyId}` : '🆔 Mã 1022: đang đồng bộ...';
+
+  const groupMsg =
+    `📩 PHẢN ÁNH MỚI (ReportApp) - ${now}\n` +
+    `${'─'.repeat(30)}\n` +
+    `📌 Tiêu đề: ${title}\n` +
+    `${nameInfo}` +
+    `📞 Liên hệ: ${contact}\n` +
+    `${catInfo}` +
+    `${locationInfo}` +
+    `📝 Nội dung:\n${content}\n` +
+    `${imageInfo}\n` +
+    `${codeLine}`;
+
+  await sendZaloToGroup(groupMsg, categoryGroupId);
+
+  console.log(`[Feedback] Lưu góp ý (ReportApp) userId=${userId} contact=${contact} category=${categoryName} images=${imageUrls.length} sync.ok=${sync.ok}`);
+
+  return { feedback, sync };
+}
+
 // Xử lý khi user chia sẻ vị trí GPS qua Zalo
 async function handleLocation(userId, { lat, lng, address }) {
   const state = getState(userId);
@@ -515,4 +612,7 @@ function isFeedbackTrigger(text) {
   );
 }
 
-module.exports = { startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger, geocodeAddress };
+module.exports = {
+  startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
+  geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone, isEmail,
+};

@@ -23,6 +23,9 @@ const feedbackSchema = new mongoose.Schema({
   userId:         { type: String, required: true, index: true },
   displayName:    { type: String, default: '' },
   contact:        { type: String, required: true },
+  // Tiêu đề dân tự nhập trên ReportApp — dùng thẳng làm tieuDe gửi 1022 (xem cgy1022Service.js).
+  // Rỗng với phản ánh cũ gửi qua chatbot (không có ô tiêu đề).
+  title:          { type: String, default: '' },
   content:        { type: String, required: true },
   location:       { type: locationSchema, default: () => ({}) },
   imageUrl:       { type: String, default: '' },

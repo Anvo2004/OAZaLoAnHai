@@ -288,6 +288,13 @@ if (require('fs').existsSync(webDist)) {
   app.get('/app*', (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
 }
 
+// ── Serve ReportApp build (production) — form web thay chatbot, xem promptReportApp() ──
+const reportDist = path.join(__dirname, '..', 'Frontend', 'ReportApp', 'dist');
+if (require('fs').existsSync(reportDist)) {
+  app.use('/report', express.static(reportDist));
+  app.get('/report*', (_req, res) => res.sendFile(path.join(reportDist, 'index.html')));
+}
+
 app.listen(CONFIG.PORT, () => {
   console.log(`\n🚀 Server An Hải Góp ý chạy tại http://localhost:${CONFIG.PORT}`);
   console.log(`📡 Webhook URL: http://localhost:${CONFIG.PORT}/webhook`);

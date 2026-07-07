@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const PUBLIC_URL = process.env.PUBLIC_URL || '';
+
 module.exports = {
   PORT: process.env.PORT || 3001,
   MONGO_URI: process.env.MONGO_URI || '',
@@ -13,10 +15,13 @@ module.exports = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
-  PUBLIC_URL: process.env.PUBLIC_URL || '',
+  PUBLIC_URL,
   EMAIL_ADMIN: process.env.EMAIL_ADMIN || '',
   EMAIL_ADMIN_PASSWORD: process.env.EMAIL_ADMIN_PASSWORD || '',
   DASHBOARD_URL: process.env.DASHBOARD_URL || '',
+  // URL form web ReportApp (thay chatbot) — mặc định suy ra từ PUBLIC_URL + /report
+  // (Backend/server.js serve tĩnh Frontend/ReportApp/dist tại đường dẫn này).
+  REPORT_APP_URL: process.env.REPORT_APP_URL || (PUBLIC_URL ? `${PUBLIC_URL}/report` : ''),
 
   // Cổng góp ý 1022 (gopy.danang.gov.vn) — đồng bộ phản ánh sang hệ thống thành phố.
   // Xác thực: HTTP Basic Auth. Bắt buộc User-Agent trình duyệt (WAF chặn UA lạ).

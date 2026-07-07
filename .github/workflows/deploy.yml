@@ -28,6 +28,7 @@ jobs:
             fi
             cd Backend && npm install --omit=dev && cd ..
             cd Frontend/Web && npm install && npm run build && cd ../..
+            cd Frontend/ReportApp && npm install && npm run build && cd ../..
             pm2 delete anhai-backend 2>/dev/null || true
             pm2 start server.js --name anhai-backend --cwd ${{ secrets.VPS_APP_DIR }}/Backend
             pm2 save
