@@ -126,3 +126,21 @@
 .glow-gold {
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
 }
+
+/* Quick actions (Dashboard) */
+.quick-action {
+  @apply flex flex-col items-center gap-2.5 py-4 px-2 rounded-xl border border-border
+         hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-center cursor-pointer no-underline;
+}
+.quick-action-icon  { @apply w-10 h-10 rounded-xl flex items-center justify-center; }
+.quick-action-label { @apply text-xs font-semibold text-muted-foreground leading-tight; }
+
+/* Hero glow blobs */
+@keyframes heroGlow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(-14px, 12px) scale(1.06); }
+}
+@keyframes heroGlow2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(18px, -10px) scale(1.08); }
+}

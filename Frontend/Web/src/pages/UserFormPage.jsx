@@ -153,14 +153,14 @@ export default function UserFormPage() {
         <Link to="/users">
           <Button variant="outline" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Quay lại</Button>
         </Link>
-        <h1 className="text-xl font-bold">{isEdit ? `Sửa @${userData?.user?.username}` : 'Tạo tài khoản mới'}</h1>
+        <h1 className="text-xl font-extrabold text-slate-800">{isEdit ? `Sửa @${userData?.user?.username}` : 'Tạo tài khoản mới'}</h1>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{isEdit ? 'Chỉnh sửa thông tin' : 'Thông tin tài khoản'}</CardTitle>
+      <Card className="rounded-2xl border-slate-100 shadow-sm">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base text-slate-800">{isEdit ? 'Chỉnh sửa thông tin' : 'Thông tin tài khoản'}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Tên đăng nhập — chỉ khi tạo mới */}
@@ -189,7 +189,7 @@ export default function UserFormPage() {
             <div className="space-y-1.5">
               <Label>Vai trò</Label>
               <select
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-400 transition-all duration-300"
                 value={form.role}
                 onChange={set('role')}
               >
@@ -203,7 +203,7 @@ export default function UserFormPage() {
             {categories.length > 0 && (
               <div className="space-y-2">
                 <Label>Loại phản ánh phụ trách</Label>
-                <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
                   {categories.map((cat) => {
                     const isChecked = form.categoryIds.includes(cat._id)
                     return (
@@ -240,7 +240,7 @@ export default function UserFormPage() {
               ) : hasMembersCache ? (
                 <>
                   <select
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-400 transition-all duration-300"
                     value={form.zaloUserId}
                     onChange={set('zaloUserId')}
                   >

@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 const ROLE_LABELS = {
-  superadmin:  'Admin',
+  superadmin: 'Admin',
   dept_leader: 'Lãnh đạo phòng',
-  officer:     'Cán bộ phụ trách',
-  staff:       'Nhân viên',
+  officer: 'Cán bộ phụ trách',
+  staff: 'Nhân viên',
 }
 
 function NavItem({ to, icon: Icon, label }) {
@@ -56,7 +56,7 @@ export default function Sidebar() {
         />
         <div className="min-w-0">
           <p className="text-white text-sm font-bold leading-tight truncate">UBND Phường An Hải</p>
-          <p className="text-emerald-300/70 text-[11px] mt-0.5">Cổng quản lý góp ý</p>
+          <p className="text-emerald-300/70 text-[11px] mt-0.5">Tiện ích quản lý góp ý và gửi thông tin cảnh báo</p>
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export default function Sidebar() {
         </p>
         <div className="space-y-0.5">
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Tổng quan" />
-          <NavItem to="/feedbacks"  icon={MessageSquare}   label="Góp ý & Phản ánh" />
+          <NavItem to="/feedbacks" icon={MessageSquare} label="Góp ý & Phản ánh" />
         </div>
 
         {/* Quản trị — superadmin (+ dept_leader cho riêng Gửi tin nhắn Zalo) */}
@@ -79,12 +79,12 @@ export default function Sidebar() {
             <div className="space-y-0.5">
               {user?.role === 'superadmin' && (
                 <>
-                  <NavItem to="/users"    icon={Users}    label="Tài khoản Admin" />
+                  <NavItem to="/users" icon={Users} label="Tài khoản Admin" />
                   <NavItem to="/settings" icon={Settings} label="Cài đặt nhóm Zalo" />
                 </>
               )}
               <NavItem to="/messages" icon={Send} label="Gửi tin nhắn Zalo" />
-              <NavItem to="/reports"  icon={FileBarChart2} label="Thống kê - Báo cáo" />
+              <NavItem to="/reports" icon={FileBarChart2} label="Thống kê - Báo cáo" />
             </div>
           </>
         )}

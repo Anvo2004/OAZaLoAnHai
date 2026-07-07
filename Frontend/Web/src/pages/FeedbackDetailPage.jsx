@@ -3,14 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Send, UserCheck, Trash2, Loader2, CheckCircle2,
-  FileText, ThumbsUp, ThumbsDown, Clock,
+  FileText, ThumbsUp, ThumbsDown, Clock, MapPin,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import StatusBadge from '@/components/feedback/StatusBadge'
 import ImageGallery from '@/components/feedback/ImageGallery'
 import AttachmentComposer from '@/components/feedback/AttachmentComposer'
@@ -221,6 +220,16 @@ export default function FeedbackDetailPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Nội dung phản ánh</p>
                 <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">{fb.content}</div>
               </div>
+
+              {fb.location?.address && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Vị trí</p>
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span>{fb.location.address}</span>
+                  </div>
+                </div>
+              )}
 
               {(() => {
                 const imgs = fb.imageUrls?.length > 0 ? fb.imageUrls : fb.imageUrl ? [fb.imageUrl] : []
@@ -476,7 +485,7 @@ export default function FeedbackDetailPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-sky-500" /> Phân công xử lý
+                  <UserCheck className="h-4 w-4 text-emerald-500" /> Phân công xử lý
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">

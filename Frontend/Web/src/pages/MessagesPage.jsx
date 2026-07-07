@@ -1077,7 +1077,7 @@ export default function MessagesPage() {
   if (!hasAccess) return <Navigate to="/dashboard" replace />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Gửi tin nhắn Zalo</h1>
         <p className="text-sm text-slate-500 mt-1">Soạn và gửi thông báo đến follower và nhóm Zalo OA</p>

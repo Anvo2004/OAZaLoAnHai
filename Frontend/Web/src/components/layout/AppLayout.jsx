@@ -61,10 +61,6 @@ export default function AppLayout() {
           <div className="relative px-6 py-4 flex items-center justify-between gap-4">
             {/* Left: greeting + page title */}
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-lg leading-tight">
-                {getHourGreeting()}, <span className="text-emerald-100">{user?.fullName?.split(' ').pop() ?? 'Admin'}</span>!
-              </h1>
-              <p className="text-emerald-100/80 text-xs mt-0.5 truncate">{page.subtitle}</p>
             </div>
 
             {/* Right: search + notifications + user */}

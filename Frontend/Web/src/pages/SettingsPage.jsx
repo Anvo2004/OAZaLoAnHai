@@ -10,12 +10,18 @@ function Avatar({ name, avatar, size = 8 }) {
   const initial = (name || '?')[0].toUpperCase()
   if (avatar) {
     return (
-      <img
-        src={avatar}
-        alt={name}
-        className={`h-${size} w-${size} rounded-full object-cover shrink-0`}
-        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
-      />
+      <>
+        <img
+          src={avatar}
+          alt={name}
+          referrerPolicy="no-referrer"
+          className={`h-${size} w-${size} rounded-full object-cover shrink-0`}
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+        />
+        <div className={`h-${size} w-${size} rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 items-center justify-center text-white text-xs font-bold shrink-0 hidden`}>
+          {initial}
+        </div>
+      </>
     )
   }
   return (
