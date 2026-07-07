@@ -51,6 +51,25 @@ async function geocodeAddress(address) {
   return null;
 }
 
+// Reverse geocode lat/lng → tên địa chỉ đọc được, dùng khi dân bấm "Lấy vị trí tự động"
+// (mini-web GPS) hoặc chia sẻ vị trí Zalo mà không kèm tên địa điểm — tránh hiển thị
+// chuỗi tọa độ thô "16.06, 108.21" cho dân và cán bộ.
+async function reverseGeocodeAddress(lat, lng) {
+  const axios = require('axios');
+  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' };
+  try {
+    const res = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+      params: { lat, lon: lng, format: 'json', 'accept-language': 'vi' },
+      headers,
+      timeout: 5000,
+    });
+    return res.data?.display_name || null;
+  } catch (err) {
+    console.error('[Geocode] Lỗi reverse geocode:', err.message);
+    return null;
+  }
+}
+
 // Buffer gộp ảnh: { userId → { urls: [], timer } }
 const imageBatchBuffer = new Map();
 
@@ -471,7 +490,9 @@ async function handleLocation(userId, { lat, lng, address }) {
   const state = getState(userId);
   if (!state || state.step !== 'waiting_location') return;
 
-  const addr = address || `${lat}, ${lng}`;
+  // Ưu tiên tên địa điểm Zalo trả sẵn (khi dân chia sẻ vị trí qua Zalo); nếu không có
+  // (VD nút GPS mini-web) thì tự reverse geocode để lấy tên đọc được thay vì tọa độ thô.
+  const addr = address || (await reverseGeocodeAddress(lat, lng)) || `${lat}, ${lng}`;
   setState(userId, {
     ...state,
     step: 'waiting_image',
