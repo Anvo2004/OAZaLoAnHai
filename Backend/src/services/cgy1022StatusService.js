@@ -99,7 +99,7 @@ async function runPollSweep() {
   try {
     const pending = await Feedback.find({
       'cgy1022.synced': true,
-      'cgy1022.gopyId': { $ne: '' },
+      'cgy1022.gopyId': { $exists: true, $ne: '' },
       'cgy1022.resultNotifiedAt': null,
       status: { $ne: 'resolved' },
     })

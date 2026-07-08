@@ -40,7 +40,7 @@ function formatDate(date) {
 
 // Danh sách phản ánh ĐÃ có mã 1022 (bỏ qua bản chưa đồng bộ — không có mã thật để tra cứu)
 async function startLookup(userId) {
-  const synced = await Feedback.find({ userId, 'cgy1022.gopyId': { $ne: '' } })
+  const synced = await Feedback.find({ userId, 'cgy1022.gopyId': { $exists: true, $ne: '' } })
     .sort({ createdAt: -1 })
     .limit(MAX_LIST)
     .lean();
