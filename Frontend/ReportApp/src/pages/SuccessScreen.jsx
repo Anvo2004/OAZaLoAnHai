@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import BlobBackground from '@/components/BlobBackground'
 
-const ACCENT = 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 40%,#d946ef 74%,#fb7185 100%)'
+const ACCENT = 'linear-gradient(135deg,#059669 0%,#0d9488 40%,#0891b2 74%,#0ea5e9 100%)'
 
 const ROW_DEFS = [
   { key: 'title',        label: 'Tiêu đề',       bold: true, multiline: true },
@@ -34,7 +34,7 @@ export default function SuccessScreen({ info = {}, onReset }) {
         <div className="rounded-2xl border border-slate-100 bg-white shadow-sm px-4 py-3.5 text-center">
           {code ? (
             <>
-              <p className="text-xs font-medium text-slate-400">Mã tra cứu (Cổng góp ý 1022)</p>
+              <p className="text-xs font-medium text-slate-400">Mã phản ánh</p>
               <p className="text-2xl font-bold text-primary mt-0.5">{code}</p>
             </>
           ) : pending ? (
@@ -68,8 +68,8 @@ export default function SuccessScreen({ info = {}, onReset }) {
         </div>
 
         {/* Lời cảm ơn */}
-        <div className="rounded-2xl px-4 py-3 text-center" style={{ background: '#f1ecfe', border: '1px solid rgba(139,92,246,0.18)' }}>
-          <p className="text-sm font-medium" style={{ color: '#7c3aed' }}>
+        <div className="rounded-2xl px-4 py-3 text-center" style={{ background: '#ecfdf5', border: '1px solid rgba(13,148,136,0.18)' }}>
+          <p className="text-sm font-medium" style={{ color: '#0f766e' }}>
             🙏 Cảm ơn bạn đã tin tưởng gởi phản ánh tới UBND phường An Hải!
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function SuccessScreen({ info = {}, onReset }) {
           className="relative overflow-hidden w-full"
           size="lg"
           onClick={onReset}
-          style={{ background: ACCENT, boxShadow: '0 16px 32px -14px rgba(139,92,246,0.55)' }}
+          style={{ background: ACCENT, boxShadow: '0 16px 32px -14px rgba(13,148,136,0.55)' }}
         >
           <span aria-hidden="true" className="absolute top-0 left-0 w-[55%] h-full pointer-events-none animate-sheen" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }} />
           <span className="relative">Gửi phản ánh khác</span>

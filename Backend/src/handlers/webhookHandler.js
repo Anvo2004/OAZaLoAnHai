@@ -1,6 +1,6 @@
 const { sendZaloText } = require('../utils/zaloApi');
 const {
-  startFeedback,
+  promptReportApp,
   handleText,
   handleImage,
   handleContactCard,
@@ -191,7 +191,7 @@ async function handleWebhook(body) {
       return;
     }
     if (isFeedbackTrigger(action) || action === '#goopy') {
-      await startFeedback(userId, displayName);
+      await promptReportApp(userId);
     }
     return;
   }

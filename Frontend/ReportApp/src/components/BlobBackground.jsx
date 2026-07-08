@@ -1,7 +1,7 @@
-const PAGE_BG = 'linear-gradient(180deg, #f3eefc 0%, #eff1fd 55%, #f6f0fb 100%)'
-const BLOB_A = 'radial-gradient(circle at 30% 30%, rgba(167,139,250,0.5), transparent 62%)'
-const BLOB_B = 'radial-gradient(circle at 50% 50%, rgba(236,72,153,0.34), transparent 62%)'
-const BLOB_C = 'radial-gradient(circle at 50% 50%, rgba(96,165,250,0.30), transparent 62%)'
+const PAGE_BG = 'linear-gradient(180deg, #ecfdf5 0%, #f0fdfa 55%, #ecfeff 100%)'
+const BLOB_A = 'radial-gradient(circle at 30% 30%, rgba(16,185,129,0.45), transparent 62%)'
+const BLOB_B = 'radial-gradient(circle at 50% 50%, rgba(20,184,166,0.34), transparent 62%)'
+const BLOB_C = 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.28), transparent 62%)'
 
 // Nền gradient + 3 khối "blob" trôi nổi + lưới chấm mờ dần — dùng chung cho cả 3 màn hình
 export default function BlobBackground({ children, className = '' }) {

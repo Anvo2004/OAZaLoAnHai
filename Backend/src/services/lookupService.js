@@ -1,8 +1,12 @@
 const { setState, getState, clearState } = require('./chatState');
 const { sendZaloText } = require('../utils/zaloApi');
 const Feedback = require('../models/Feedback');
+const cgy1022 = require('./cgy1022Service');
+const { isResolvedOnCgy, extractResultContent } = require('./cgy1022StatusService');
 
-const CODE_RE = /^#?([0-9a-f]{5})$/i;
+// Mã tra cứu = mã thật trên Cổng góp ý 1022 (gopyId, số, VD 105227) — KHÔNG còn dùng mã nội
+// bộ tự sinh nữa. Chỉ liệt kê/tra cứu các phản ánh ĐÃ đồng bộ 1022 (có cgy1022.gopyId).
+const CODE_RE = /^#?(\d{4,8})$/;
 const MAX_LIST = 5;
 const CANCEL_WORDS = ['huỷ', 'hủy', 'huy', 'cancel', 'thoát', 'thoat'];
 
@@ -12,6 +16,7 @@ function isLookupTrigger(text) {
     lower === '#tracuuhoso' ||
     lower === '#tracuugoopy' ||
     lower === '#theodoi' ||
+    lower === '#theodoigopy' ||
     lower.includes('tra cứu hồ sơ') ||
     lower.includes('tra cuu ho so') ||
     lower.includes('theo dõi phản ánh') ||
@@ -29,114 +34,70 @@ function isDirectCode(text) {
   return CODE_RE.test(text.trim());
 }
 
-function shortCode(fb) {
-  return fb._id.toString().slice(-5).toUpperCase();
-}
-
-function isResolved(fb) {
-  return fb.status === 'resolved' || fb.status === 'done';
-}
-
-function statusLine(fb) {
-  return isResolved(fb) ? '✅ Đã xử lý xong' : '🕐 Đang xử lý';
-}
-
-function progressBar(fb) {
-  // Stage 1: luôn hoàn thành (đã gởi hồ sơ)
-  const s1 = true;
-  // Stage 2: đã tiếp nhận — được phân công cho cán bộ
-  const s2 = !!(fb.assignedTo || fb.status === 'draft' || isResolved(fb));
-  // Stage 3: đang xử lý — cán bộ đã nộp dự thảo chờ duyệt
-  const s3 = fb.status === 'draft' || isResolved(fb);
-  // Stage 4: đã duyệt
-  const s4 = isResolved(fb);
-  // Stage 5: đã gởi hoàn tất hồ sơ
-  const s5 = isResolved(fb);
-
-  const mark = (done) => done ? '✅' : '⬜';
-  const stages = [
-    `${mark(s1)} 1. Đã gởi`,
-    `${mark(s2)} 2. Đã tiếp nhận`,
-    `${mark(s3)} 3. Đang xử lý`,
-    `${mark(s4)} 4. Đã duyệt`,
-    `${mark(s5)} 5. Đã xử lý`,
-  ];
-
-  // Xác định bước hiện tại
-  let current = 1;
-  if (s5) current = 5;
-  else if (s4) current = 4;
-  else if (s3) current = 3;
-  else if (s2) current = 2;
-  const labels = stages.map((s, i) => i + 1 === current && !s5 ? s + ' ⏳' : s);
-
-  return '📊 TIẾN TRÌNH XỬ LÝ\n' + labels.join('\n');
-}
-
 function formatDate(date) {
   return new Date(date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
-function truncate(text, max) {
-  const t = (text || '').trim();
-  return t.length > max ? t.slice(0, max).trim() + '...' : t;
-}
-
+// Danh sách phản ánh ĐÃ có mã 1022 (bỏ qua bản chưa đồng bộ — không có mã thật để tra cứu)
 async function startLookup(userId) {
-  const items = await Feedback.find({ userId })
+  const synced = await Feedback.find({ userId, 'cgy1022.gopyId': { $ne: '' } })
     .sort({ createdAt: -1 })
     .limit(MAX_LIST)
-    .populate('categoryId', 'name')
     .lean();
 
-  if (items.length === 0) {
+  if (synced.length === 0) {
+    const anyPending = await Feedback.exists({ userId, 'cgy1022.gopyId': '' });
     await sendZaloText(userId,
-      '📭 Bạn chưa có phản ánh nào được ghi nhận.\n\n' +
-      'Chọn "Góp ý, phản ánh" trong menu để gửi mới.'
+      anyPending
+        ? '⏳ Phản ánh của bạn đang được đồng bộ mã, vui lòng thử lại sau ít phút.'
+        : '📭 Bạn chưa có phản ánh nào được ghi nhận.\n\nBấm "Gửi góp ý, phản ánh" trong menu để gửi mới.'
     );
     return;
   }
 
-  setState(userId, { step: 'lookup_list', items: items.map((i) => i._id.toString()) });
+  setState(userId, { step: 'lookup_list', gopyIds: synced.map((fb) => fb.cgy1022.gopyId) });
 
-  const lines = items.map((fb, i) =>
-    `${i + 1}️⃣ #${shortCode(fb)} · ${formatDate(fb.createdAt)} · ${statusLine(fb)}\n` +
-    `   ${truncate(fb.content, 60)}`
+  const lines = synced.map((fb, i) =>
+    `${i + 1}️⃣ Mã ${fb.cgy1022.gopyId} · ${formatDate(fb.createdAt)}`
   );
 
   await sendZaloText(userId,
-    '📋 Các phản ánh gần đây của bạn:\n\n' +
-    lines.join('\n\n') +
-    `\n\nNhắn số (1-${items.length}) để xem chi tiết, hoặc nhắn mã (#XXXXX).\n` +
+    '📋 Các phản ánh đã gửi lên Cổng góp ý của bạn:\n\n' +
+    lines.join('\n') +
+    `\n\nNhắn số (1-${synced.length}) để xem trạng thái xử lý, hoặc nhắn thẳng mã phản ánh.\n` +
     '(Nhắn "huỷ" để thoát)'
   );
 }
 
-async function replyDetail(userId, fb) {
-  const catName = fb.categoryId?.name || 'Chưa rõ';
-  const locationLine = fb.location?.address ? `📍 Địa chỉ: ${fb.location.address}\n` : '';
-  // Hạn xử lý — chỉ hiển thị khi chưa gởi hoàn tất hồ sơ
-  const deadlineLine = (!isResolved(fb) && fb.deadline) ? `⏰ Hạn xử lý: ${formatDate(fb.deadline)}\n` : '';
+// Tra trạng thái LIVE trực tiếp từ 1022 (không dùng trạng thái nội bộ) — theo đúng yêu cầu:
+// tình trạng hồ sơ dựa vào trường trạng thái thật trên Cổng góp ý.
+async function replyStatus(userId, fb) {
+  const gopyId = fb.cgy1022.gopyId;
+  let detail;
+  try {
+    detail = await cgy1022.getFeedbackDetail(gopyId);
+  } catch (err) {
+    await sendZaloText(userId,
+      `⚠️ Không lấy được trạng thái mới nhất từ Cổng góp ý cho mã ${gopyId} lúc này. Vui lòng thử lại sau.`
+    );
+    return;
+  }
 
-  // Phần 1: Thông tin hồ sơ
+  const resolved = isResolvedOnCgy(detail);
+  const statusLabel = detail?.tinhTrangXuLy || (resolved ? 'Đã xử lý' : 'Đang xử lý');
+  const locationLine = fb.location?.address ? `📍 Địa chỉ: ${fb.location.address}\n` : '';
+
   let msg =
     `━━━━━━ THÔNG TIN HỒ SƠ ━━━━━━\n` +
-    `🆔 Mã phản ánh: #${shortCode(fb)}\n` +
+    `🆔 Mã phản ánh: ${gopyId}\n` +
     `🗓️ Ngày gửi: ${formatDate(fb.createdAt)}\n` +
-    `🏷️ Loại: ${catName}\n` +
     `${locationLine}` +
-    `${deadlineLine}` +
-    `📝 Nội dung: ${fb.content}\n\n`;
+    `📝 Nội dung: ${fb.content}\n\n` +
+    `📊 Trạng thái (Cổng góp ý): ${resolved ? '✅' : '🕐'} ${statusLabel}`;
 
-  // Phần 2: Tiến trình xử lý
-  msg += progressBar(fb);
-
-  // Phần 3: Phản hồi của UBND (nếu đã giải quyết xong)
-  if (isResolved(fb)) {
-    const reply = fb.finalResponse || fb.response || '';
-    if (reply) {
-      msg += `\n\n━━━━━━ PHẢN HỒI CỦA UBND ━━━━━━\n${reply}`;
-    }
+  if (resolved) {
+    const result = extractResultContent(detail);
+    if (result) msg += `\n\n━━━━━━ KẾT QUẢ XỬ LÝ ━━━━━━\n${result}`;
   }
 
   await sendZaloText(userId, msg);
@@ -144,22 +105,17 @@ async function replyDetail(userId, fb) {
 
 async function lookupByCode(userId, rawCode) {
   const match = rawCode.trim().match(CODE_RE);
-  const code = (match ? match[1] : rawCode.replace(/^#/, '')).toUpperCase();
+  const gopyId = match ? match[1] : rawCode.replace(/^#/, '').trim();
 
-  const candidates = await Feedback.find({ userId })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .populate('categoryId', 'name')
-    .lean();
-
-  const fb = candidates.find((f) => shortCode(f) === code);
   clearState(userId);
 
+  // Chỉ tìm trong CHÍNH phản ánh của user này — không cho tra mã của người khác dù đoán đúng số.
+  const fb = await Feedback.findOne({ userId, 'cgy1022.gopyId': gopyId }).lean();
   if (!fb) {
-    await sendZaloText(userId, `⚠️ Không tìm thấy phản ánh #${code} trong các phản ánh của bạn.`);
+    await sendZaloText(userId, `⚠️ Không tìm thấy phản ánh mã ${gopyId} trong các phản ánh của bạn.`);
     return;
   }
-  await replyDetail(userId, fb);
+  await replyStatus(userId, fb);
 }
 
 async function handleLookupReply(userId, text) {
@@ -177,17 +133,18 @@ async function handleLookupReply(userId, text) {
   }
 
   const state = getState(userId);
-  const ids = state?.items || [];
+  const gopyIds = state?.gopyIds || [];
   const idx = parseInt(lower, 10) - 1;
 
-  if (Number.isInteger(idx) && ids[idx]) {
-    const fb = await Feedback.findById(ids[idx]).populate('categoryId', 'name').lean();
+  if (Number.isInteger(idx) && gopyIds[idx]) {
+    const gopyId = gopyIds[idx];
     clearState(userId);
-    if (fb) await replyDetail(userId, fb);
+    const fb = await Feedback.findOne({ userId, 'cgy1022.gopyId': gopyId }).lean();
+    if (fb) await replyStatus(userId, fb);
     return;
   }
 
-  await sendZaloText(userId, `⚠️ Vui lòng nhắn số (1-${ids.length}) hoặc mã phản ánh (#XXXXX).`);
+  await sendZaloText(userId, `⚠️ Vui lòng nhắn số (1-${gopyIds.length}) hoặc mã phản ánh.`);
 }
 
 module.exports = { isLookupTrigger, isDirectCode, startLookup, handleLookupReply, lookupByCode };

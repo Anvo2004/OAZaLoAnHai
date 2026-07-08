@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 250 60% 97%;
-    --foreground: 252 20% 22%;
+    --background: 165 55% 97%;
+    --foreground: 165 25% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 252 20% 22%;
+    --card-foreground: 165 25% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 252 20% 22%;
-    --primary: 258 90% 66%;
+    --popover-foreground: 165 25% 15%;
+    --primary: 160 84% 33%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 255 45% 95%;
-    --secondary-foreground: 252 20% 22%;
-    --muted: 255 45% 95%;
-    --muted-foreground: 250 10% 55%;
-    --accent: 255 45% 95%;
-    --accent-foreground: 252 20% 22%;
+    --secondary: 165 45% 95%;
+    --secondary-foreground: 165 25% 15%;
+    --muted: 165 45% 95%;
+    --muted-foreground: 165 10% 45%;
+    --accent: 165 45% 95%;
+    --accent-foreground: 165 25% 15%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 255 40% 92%;
-    --input: 255 40% 92%;
-    --ring: 258 90% 66%;
+    --border: 165 40% 90%;
+    --input: 165 40% 90%;
+    --ring: 160 84% 33%;
     --radius: 1rem;
   }
 }
@@ -34,11 +34,11 @@
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.25); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.4); }
+::-webkit-scrollbar-thumb { background: rgba(13, 148, 136, 0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(13, 148, 136, 0.4); }
 
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #d946ef);
+  background: linear-gradient(135deg, #059669, #0891b2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -46,7 +46,7 @@
 
 /* Lưới chấm mờ dần, dùng cho nền trang */
 .dot-grid {
-  background-image: radial-gradient(rgba(120, 100, 190, 0.14) 1.4px, transparent 1.4px);
+  background-image: radial-gradient(rgba(13, 148, 136, 0.14) 1.4px, transparent 1.4px);
   background-size: 22px 22px;
   -webkit-mask-image: radial-gradient(130% 100% at 50% 0%, #000 40%, transparent 82%);
   mask-image: radial-gradient(130% 100% at 50% 0%, #000 40%, transparent 82%);

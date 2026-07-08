@@ -12,7 +12,9 @@ const CONFIG = require('../config');
 // Nguyên tắc giống cgy1022RetryService: KHÔNG throw ra ngoài, lỗi chỉ log.
 // ============================================================
 
-const POLL_INTERVAL_MS = 15 * 60 * 1000; // quét mỗi 15 phút
+// 1022 không có webhook — poll là cách duy nhất phát hiện thay đổi trạng thái. Rút ngắn xuống
+// 5 phút để giảm độ trễ (gần đúng nhất có thể thay cho webhook thật không tồn tại).
+const POLL_INTERVAL_MS = 5 * 60 * 1000; // quét mỗi 5 phút
 const BATCH_SIZE = 20;
 
 // Nhận diện linh hoạt trạng thái "đã xử lý" — production đã chứng minh khác tài liệu 2022,
@@ -70,7 +72,7 @@ async function checkOne(fb) {
     const groupMsg =
       `📣 KẾT QUẢ XỬ LÝ TỪ CỔNG GÓP Ý 1022 — ${now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}\n` +
       `${'─'.repeat(30)}\n` +
-      `🆔 Mã ý kiến: ${gopyId}\n` +
+      `🆔 Mã phản ánh: ${gopyId}\n` +
       `📡 Nguồn góp ý: ${CONFIG.CGY1022_NGUON}\n` +
       `🏷️ Lĩnh vực: ${categoryName || 'Chưa rõ'}\n` +
       `📝 Nội dung xử lý:\n${resultContent}`;
@@ -122,12 +124,12 @@ function startCgy1022StatusPoll() {
     console.log('[CGY1022] Chưa cấu hình (.env) — bỏ qua poll trạng thái xử lý');
     return;
   }
-  // Lần đầu sau 5 phút khởi động (lệch với retry job để không dồn tải), sau đó mỗi 15 phút
+  // Lần đầu sau 2 phút khởi động (lệch với retry job 10 phút để không dồn tải), sau đó mỗi 5 phút
   setTimeout(() => {
     runPollSweep();
     setInterval(runPollSweep, POLL_INTERVAL_MS);
-  }, 5 * 60 * 1000);
-  console.log('[CGY1022] Poll trạng thái xử lý khởi động (quét mỗi 15 phút)');
+  }, 2 * 60 * 1000);
+  console.log('[CGY1022] Poll trạng thái xử lý khởi động (quét mỗi 5 phút)');
 }
 
-module.exports = { startCgy1022StatusPoll, runPollSweep };
+module.exports = { startCgy1022StatusPoll, runPollSweep, isResolvedOnCgy, extractResultContent };

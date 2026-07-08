@@ -544,7 +544,7 @@ async function createFeedbackEntry({
   const sync = await syncFeedbackById(feedback._id);
 
   const codeInfo = sync.ok && sync.gopyId
-    ? `Mã tra cứu (Cổng góp ý 1022): ${sync.gopyId}`
+    ? `Mã phản ánh: ${sync.gopyId}`
     : 'Mã tra cứu đang được đồng bộ, chúng tôi sẽ nhắn Zalo báo mã cho bạn ngay khi có.';
 
   await sendZaloText(userId,
@@ -561,7 +561,7 @@ async function createFeedbackEntry({
   const imageInfo = imageUrls.length > 0
     ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
     : '🖼️ Ảnh: Không có';
-  const codeLine = sync.ok && sync.gopyId ? `🆔 Mã 1022: ${sync.gopyId}` : '🆔 Mã 1022: đang đồng bộ...';
+  const codeLine = sync.ok && sync.gopyId ? `🆔 Mã phản ánh: ${sync.gopyId}` : '🆔 Mã phản ánh: đang đồng bộ...';
 
   const groupMsg =
     `📩 PHẢN ÁNH MỚI (ReportApp) - ${now}\n` +
@@ -613,6 +613,6 @@ function isFeedbackTrigger(text) {
 }
 
 module.exports = {
-  startFeedback, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
+  startFeedback, promptReportApp, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
   geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone, isEmail,
 };

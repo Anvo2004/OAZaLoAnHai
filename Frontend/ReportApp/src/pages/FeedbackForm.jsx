@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import BlobBackground from '@/components/BlobBackground'
 import { api } from '@/lib/api'
 
-const ACCENT = 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 40%,#d946ef 74%,#fb7185 100%)'
+const ACCENT = 'linear-gradient(135deg,#059669 0%,#0d9488 40%,#0891b2 74%,#0ea5e9 100%)'
 
 const MAX_IMAGES = 5
 const MAX_SIZE = 5 * 1024 * 1024
@@ -163,7 +163,7 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
 
   return (
     <BlobBackground className="p-4">
-      <div className="relative overflow-hidden mx-auto max-w-md rounded-[24px] px-5 py-5 text-white animate-fade-in mb-4" style={{ background: ACCENT, boxShadow: '0 20px 44px -16px rgba(139,92,246,0.55)' }}>
+      <div className="relative overflow-hidden mx-auto max-w-md rounded-[24px] px-5 py-5 text-white animate-fade-in mb-4" style={{ background: ACCENT, boxShadow: '0 20px 44px -16px rgba(13,148,136,0.55)' }}>
         <span aria-hidden="true" className="absolute top-0 left-0 w-[55%] h-full pointer-events-none animate-sheen" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)' }} />
         <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10.5px] font-bold tracking-[1.5px] uppercase" style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(4px)' }}>
           <Sparkles className="h-3 w-3" /> Chuyển đổi số
@@ -177,7 +177,7 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
         </div>
       </div>
 
-      <Card className="mx-auto max-w-md animate-fade-in" style={{ boxShadow: '0 18px 46px -22px rgba(90,70,170,0.42)' }}>
+      <Card className="mx-auto max-w-md animate-fade-in" style={{ boxShadow: '0 18px 46px -22px rgba(6,95,70,0.42)' }}>
         <CardContent className="pt-6">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
@@ -289,7 +289,7 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
               className="relative overflow-hidden group w-full gap-2"
               size="lg"
               disabled={submitting}
-              style={{ background: ACCENT, boxShadow: '0 16px 32px -14px rgba(139,92,246,0.55)' }}
+              style={{ background: ACCENT, boxShadow: '0 16px 32px -14px rgba(13,148,136,0.55)' }}
             >
               {!submitting && <span aria-hidden="true" className="absolute top-0 left-0 w-[55%] h-full pointer-events-none animate-sheen" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }} />}
               <span className="relative inline-flex items-center gap-2">
