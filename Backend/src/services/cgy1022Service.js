@@ -58,6 +58,13 @@ function getLinhVucId(categoryName) {
   return CONFIG.CGY1022_LINHVUC_DEFAULT !== '' ? Number(CONFIG.CGY1022_LINHVUC_DEFAULT) : null;
 }
 
+// Dùng chung cho cả payload 1022 LẪN tin nhắn thông báo nhóm nội bộ (feedbackService.js) —
+// một nguồn sự thật duy nhất cho quyết định ẩn/hiện SĐT theo loại phản ánh.
+function shouldShowPhone(categoryName) {
+  const linhVucId = getLinhVucId(categoryName);
+  return linhVucId != null && getShowPhoneLinhVucSet().has(linhVucId);
+}
+
 // Map document Feedback (đã populate categoryId) → body POST /api/gopy
 function buildPayload(fb) {
   const categoryName = fb.categoryId?.name || '';
@@ -81,7 +88,7 @@ function buildPayload(fb) {
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 
   const linhVucId = getLinhVucId(categoryName);
-  const showPhone = linhVucId != null && getShowPhoneLinhVucSet().has(linhVucId);
+  const showPhone = shouldShowPhone(categoryName);
 
   const payload = {
     userId: Number(CONFIG.CGY1022_USER_ID) || 0,
@@ -168,4 +175,4 @@ async function getFeedbackDetail(gopyId) {
   return res.data;
 }
 
-module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, listFeedbacks, getFeedbackDetail };
+module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, shouldShowPhone, listFeedbacks, getFeedbackDetail };

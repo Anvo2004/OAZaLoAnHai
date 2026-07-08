@@ -478,11 +478,14 @@ async function saveFeedback(userId, state) {
       ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
       : '🖼️ Ảnh: Không có';
 
+    const { shouldShowPhone } = require('./cgy1022Service');
+    const contactLine = shouldShowPhone(state.categoryName) ? `📞 Liên hệ: ${state.contact}\n` : '';
+
     const groupMsg =
       `📩 PHẢN ÁNH MỚI - ${now}\n` +
       `${'─'.repeat(30)}\n` +
       `${nameInfo}` +
-      `📞 Liên hệ: ${state.contact}\n` +
+      `${contactLine}` +
       `${catInfo}` +
       `${locationInfo}` +
       `📝 Nội dung:\n${state.content}\n` +
@@ -562,13 +565,15 @@ async function createFeedbackEntry({
     ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
     : '🖼️ Ảnh: Không có';
   const codeLine = sync.ok && sync.gopyId ? `🆔 Mã phản ánh: ${sync.gopyId}` : '🆔 Mã phản ánh: đang đồng bộ...';
+  const { shouldShowPhone } = require('./cgy1022Service');
+  const contactLine = shouldShowPhone(categoryName) ? `📞 Liên hệ: ${contact}\n` : '';
 
   const groupMsg =
     `📩 PHẢN ÁNH MỚI (ReportApp) - ${now}\n` +
     `${'─'.repeat(30)}\n` +
     `📌 Tiêu đề: ${title}\n` +
     `${nameInfo}` +
-    `📞 Liên hệ: ${contact}\n` +
+    `${contactLine}` +
     `${catInfo}` +
     `${locationInfo}` +
     `📝 Nội dung:\n${content}\n` +
