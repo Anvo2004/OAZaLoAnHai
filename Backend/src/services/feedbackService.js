@@ -543,8 +543,9 @@ async function createFeedbackEntry({
   });
 
   // Đồng bộ 1022 NGAY — route gọi hàm này cần biết kết quả để trả mã thật cho dân.
+  // notifyOnSuccess: false — tin xác nhận ngay dưới đây ĐÃ có mã rồi, khỏi báo trùng lần nữa.
   const { syncFeedbackById } = require('./cgy1022RetryService');
-  const sync = await syncFeedbackById(feedback._id);
+  const sync = await syncFeedbackById(feedback._id, { notifyOnSuccess: false });
 
   const codeInfo = sync.ok && sync.gopyId
     ? `Mã phản ánh: ${sync.gopyId}`

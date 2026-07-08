@@ -13,7 +13,11 @@ const RETRY_INTERVAL_MS = 10 * 60 * 1000; // quét mỗi 10 phút
 const MAX_ATTEMPTS = 10;                  // quá 10 lần thì bỏ cuộc (log cảnh báo)
 const BATCH_SIZE = 20;                    // mỗi lượt tối đa 20 bản, tuần tự
 
-async function syncFeedbackById(feedbackId) {
+// notifyOnSuccess=false khi caller đã tự báo mã cho dân trong CÙNG phản hồi rồi (VD
+// createFeedbackEntry() của ReportApp gọi đồng bộ, trả mã thẳng trong response) — tránh
+// nhắn trùng 2 tin "mã phản ánh" liền nhau. Mặc định true cho retry job/chatbot cũ, nơi
+// tin xác nhận ban đầu CHƯA có mã (gửi bất đồng bộ) nên vẫn cần báo thêm khi có mã thật.
+async function syncFeedbackById(feedbackId, { notifyOnSuccess = true } = {}) {
   const fb = await Feedback.findById(feedbackId).populate('categoryId', 'name').lean();
   if (!fb) return { ok: false, error: `Không tìm thấy phản ánh ${feedbackId}` };
   if (fb.cgy1022?.synced) return { ok: true, gopyId: fb.cgy1022.gopyId };
@@ -27,7 +31,7 @@ async function syncFeedbackById(feedbackId) {
       'cgy1022.lastError': '',
     });
     // Báo thêm mã tra cứu chính thức cho dân — fire-and-forget, không chặn luồng sync
-    if (r.gopyId && fb.userId) {
+    if (notifyOnSuccess && r.gopyId && fb.userId) {
       sendZaloText(fb.userId, `📌 Mã phản ánh chính thức của bạn: ${r.gopyId}`)
         .catch((err) => console.error('[CGY1022] Lỗi gửi mã tra cứu cho dân:', err.message));
     }

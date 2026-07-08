@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Loader2, Send, Pencil, Sparkles, X } from 'lucide-react'
+import { MapPin, Loader2, Send, Pencil, Sparkles, X, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,7 +52,7 @@ function tryBrowserGeo(onSuccess, onError) {
   )
 }
 
-export default function FeedbackForm({ profile, accessToken, onSuccess }) {
+export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHistory }) {
   const [categories, setCategories] = useState([])
   const [categoryId, setCategoryId] = useState('')
   const [title, setTitle] = useState('')
@@ -174,12 +174,21 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
         <div className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10.5px] font-bold tracking-[1.5px] uppercase" style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(4px)' }}>
           <Sparkles className="h-3 w-3" /> Chuyển đổi số
         </div>
-        <div className="relative mt-[15px]">
-          <div className="font-extrabold text-xl leading-tight tracking-tight">Gửi góp ý - Phản ánh</div>
-          <div className="flex items-center gap-2 mt-1 text-sm text-white/85">
-            {profile.avatar && <img src={profile.avatar} alt="" className="h-6 w-6 rounded-full" />}
-            <span>Xin chào, {profile.name || 'bạn'}</span>
+        <div className="relative mt-[15px] flex items-end justify-between gap-2">
+          <div>
+            <div className="font-extrabold text-xl leading-tight tracking-tight">Gửi góp ý - Phản ánh</div>
+            <div className="flex items-center gap-2 mt-1 text-sm text-white/85">
+              {profile.avatar && <img src={profile.avatar} alt="" className="h-6 w-6 rounded-full" />}
+              <span>Xin chào, {profile.name || 'bạn'}</span>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onShowHistory}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <ClipboardList className="h-3.5 w-3.5" /> Phản ánh của tôi
+          </button>
         </div>
       </div>
 

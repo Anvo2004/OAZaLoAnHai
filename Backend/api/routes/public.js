@@ -137,6 +137,66 @@ router.post('/feedbacks', upload.array('images', 5), async (req, res) => {
   }
 })
 
+// GET /api/public/my-feedbacks — ReportApp: danh sách phản ánh ĐÃ có mã 1022 của người dùng
+// đang đăng nhập. Dùng đúng ID OAuth (profile.id) — cùng ID đã ghi lúc tạo phản ánh qua
+// ReportApp, nên luôn khớp. KHÔNG dùng cho lệnh #theodoi trong chat (đó là ID webhook OA,
+// khác namespace với ID OAuth — 2 ID khác nhau cho cùng 1 người dùng, xem lookupService.js).
+router.get('/my-feedbacks', async (req, res) => {
+  try {
+    const { accessToken } = req.query
+    if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
+    const profile = await fetchZaloProfile(accessToken)
+
+    const items = await Feedback.find({ userId: profile.id, 'cgy1022.gopyId': { $exists: true, $ne: '' } })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .select('title content createdAt cgy1022')
+      .lean()
+
+    res.json({
+      items: items.map((fb) => ({
+        gopyId: fb.cgy1022.gopyId,
+        title: fb.title || fb.content.slice(0, 60),
+        createdAt: fb.createdAt,
+      })),
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/public/my-feedbacks/:gopyId — trạng thái LIVE trực tiếp từ Cổng góp ý 1022
+// (không dùng trạng thái nội bộ) cho 1 phản ánh của CHÍNH người đang đăng nhập.
+router.get('/my-feedbacks/:gopyId', async (req, res) => {
+  try {
+    const { accessToken } = req.query
+    if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
+    const profile = await fetchZaloProfile(accessToken)
+
+    // Chỉ tìm trong CHÍNH phản ánh của user này — không cho xem mã của người khác dù đoán đúng số.
+    const fb = await Feedback.findOne({ userId: profile.id, 'cgy1022.gopyId': req.params.gopyId }).lean()
+    if (!fb) return res.status(404).json({ error: 'Không tìm thấy phản ánh' })
+
+    const cgy1022 = require('../../src/services/cgy1022Service')
+    const { isResolvedOnCgy, extractResultContent } = require('../../src/services/cgy1022StatusService')
+    const detail = await cgy1022.getFeedbackDetail(req.params.gopyId)
+    const resolved = isResolvedOnCgy(detail)
+
+    res.json({
+      gopyId: req.params.gopyId,
+      title: fb.title,
+      content: fb.content,
+      address: fb.location?.address || '',
+      createdAt: fb.createdAt,
+      statusLabel: detail?.tinhTrangXuLy || (resolved ? 'Đã xử lý' : 'Đang xử lý'),
+      resolved,
+      resultContent: resolved ? extractResultContent(detail) : '',
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/public/map-markers — không cần auth, dùng cho bản đồ trang login
 // Chỉ trả về hồ sơ chưa giải quyết có tọa độ, không lộ thông tin nhạy cảm
 router.get('/map-markers', async (req, res) => {

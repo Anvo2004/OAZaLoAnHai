@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import ZaloLoginGate from '@/pages/ZaloLoginGate'
 import FeedbackForm from '@/pages/FeedbackForm'
 import SuccessScreen from '@/pages/SuccessScreen'
+import MyFeedbacksPage from '@/pages/MyFeedbacksPage'
 import { api } from '@/lib/api'
 
 export default function App() {
@@ -9,6 +10,7 @@ export default function App() {
   const [loadingLogin, setLoadingLogin] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [submittedInfo, setSubmittedInfo] = useState(null)
+  const [view, setView] = useState('form') // 'form' | 'history'
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -33,11 +35,16 @@ export default function App() {
     return <SuccessScreen info={submittedInfo} onReset={() => setSubmittedInfo(null)} />
   }
 
+  if (view === 'history') {
+    return <MyFeedbacksPage accessToken={auth.accessToken} onBack={() => setView('form')} />
+  }
+
   return (
     <FeedbackForm
       profile={auth.profile}
       accessToken={auth.accessToken}
       onSuccess={setSubmittedInfo}
+      onShowHistory={() => setView('history')}
     />
   )
 }
