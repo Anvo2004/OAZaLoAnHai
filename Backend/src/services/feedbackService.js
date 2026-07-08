@@ -102,6 +102,24 @@ async function promptReportApp(userId) {
   );
 }
 
+// Thay cho startLookup() (lookupService.js — dùng ID webhook OA, KHÔNG khớp với ID OAuth
+// ReportApp dùng để tạo phản ánh, nên không tìm thấy phản ánh gửi qua ReportApp). Chuyển
+// sang trang "Phản ánh của tôi" trong ReportApp (đăng nhập lại rồi bấm nút trong app) —
+// lookupService.js vẫn giữ nguyên, chỉ đổi lối vào, để không phá dữ liệu cũ.
+async function promptReportAppHistory(userId) {
+  if (!CONFIG.REPORT_APP_URL) {
+    await sendZaloText(userId, '⚠️ Tính năng theo dõi phản ánh đang được nâng cấp, vui lòng thử lại sau.');
+    return;
+  }
+  await sendZaloLinkButton(
+    userId,
+    '📋 Theo dõi phản ánh',
+    'Nhấn nút bên dưới, đăng nhập lại rồi chọn "Phản ánh của tôi" để xem trạng thái xử lý mới nhất.',
+    '🔍 Mở Cổng góp ý An Hải',
+    CONFIG.REPORT_APP_URL,
+  );
+}
+
 // Bắt đầu luồng góp ý (hội thoại cũ — giữ lại, không còn là lối vào chính, xem promptReportApp)
 async function startFeedback(userId, displayName = '') {
   // Nếu webhook không trả display_name → chủ động gọi API lấy tên ngay
@@ -619,6 +637,6 @@ function isFeedbackTrigger(text) {
 }
 
 module.exports = {
-  startFeedback, promptReportApp, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
+  startFeedback, promptReportApp, promptReportAppHistory, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
   geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone, isEmail,
 };

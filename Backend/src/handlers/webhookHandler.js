@@ -1,6 +1,7 @@
 const { sendZaloText } = require('../utils/zaloApi');
 const {
   promptReportApp,
+  promptReportAppHistory,
   handleText,
   handleImage,
   handleContactCard,
@@ -10,9 +11,7 @@ const {
 const {
   isLookupTrigger,
   isDirectCode,
-  startLookup,
   handleLookupReply,
-  lookupByCode,
 } = require('../services/lookupService');
 const { getState } = require('../services/chatState');
 const { saveProfile } = require('../admin/profileCache');
@@ -169,12 +168,8 @@ async function handleWebhook(body) {
       return;
     }
     if (!state) {
-      if (isLookupTrigger(text)) {
-        await startLookup(userId);
-        return;
-      }
-      if (isDirectCode(text)) {
-        await lookupByCode(userId, text);
+      if (isLookupTrigger(text) || isDirectCode(text)) {
+        await promptReportAppHistory(userId);
         return;
       }
     }
@@ -187,7 +182,7 @@ async function handleWebhook(body) {
   if (eventName === 'user_submit_info') {
     const action = (body.info?.action_payload || body.info?.action || body.info?.data || '').trim();
     if (isLookupTrigger(action)) {
-      await startLookup(userId);
+      await promptReportAppHistory(userId);
       return;
     }
     if (isFeedbackTrigger(action) || action === '#goopy') {
