@@ -165,7 +165,7 @@ export default function FeedbacksPage() {
                       className="px-4 py-3.5 text-xs font-mono font-semibold text-emerald-600"
                       title={official ? 'Mã trên Cổng góp ý 1022' : 'Mã nội bộ — chưa đồng bộ 1022'}
                     >
-                      #{code}
+                      {official ? code : `#${code}`}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">

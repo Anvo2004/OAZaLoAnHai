@@ -35,7 +35,7 @@ export default function SuccessScreen({ info = {}, onReset }) {
           {code ? (
             <>
               <p className="text-xs font-medium text-slate-400">Mã tra cứu (Cổng góp ý 1022)</p>
-              <p className="text-2xl font-bold text-primary mt-0.5">#{code}</p>
+              <p className="text-2xl font-bold text-primary mt-0.5">{code}</p>
             </>
           ) : pending ? (
             <>

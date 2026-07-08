@@ -154,7 +154,7 @@ export default function FeedbackDetailPage() {
               className="text-emerald-600 font-mono"
               title={hasOfficialCode ? 'Mã trên Cổng góp ý 1022' : 'Mã nội bộ — chưa đồng bộ 1022'}
             >
-              #{shortCode}
+              {hasOfficialCode ? shortCode : `#${shortCode}`}
             </span>
           </h1>
           <p className="text-xs text-muted-foreground">{fb._id}</p>

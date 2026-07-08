@@ -28,7 +28,7 @@ async function syncFeedbackById(feedbackId) {
     });
     // Báo thêm mã tra cứu chính thức cho dân — fire-and-forget, không chặn luồng sync
     if (r.gopyId && fb.userId) {
-      sendZaloText(fb.userId, `📌 Mã tra cứu chính thức trên Cổng góp ý 1022: #${r.gopyId}`)
+      sendZaloText(fb.userId, `📌 Mã tra cứu chính thức trên Cổng góp ý 1022: ${r.gopyId}`)
         .catch((err) => console.error('[CGY1022] Lỗi gửi mã tra cứu cho dân:', err.message));
     }
   } else {

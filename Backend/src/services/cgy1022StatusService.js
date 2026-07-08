@@ -61,7 +61,7 @@ async function checkOne(fb) {
   if (fb.userId) {
     await sendZaloText(
       fb.userId,
-      `✅ Phản ánh #${gopyId} của bạn đã được xử lý trên Cổng góp ý 1022:\n\n${resultContent}`
+      `✅ Phản ánh ${gopyId} của bạn đã được xử lý trên Cổng góp ý 1022:\n\n${resultContent}`
     ).catch((err) => console.error('[CGY1022] Lỗi nhắn kết quả cho dân:', err.message));
   }
 
@@ -70,7 +70,7 @@ async function checkOne(fb) {
     const groupMsg =
       `📣 KẾT QUẢ XỬ LÝ TỪ CỔNG GÓP Ý 1022 — ${now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}\n` +
       `${'─'.repeat(30)}\n` +
-      `🆔 Mã ý kiến: #${gopyId}\n` +
+      `🆔 Mã ý kiến: ${gopyId}\n` +
       `📡 Nguồn góp ý: ${CONFIG.CGY1022_NGUON}\n` +
       `🏷️ Lĩnh vực: ${categoryName || 'Chưa rõ'}\n` +
       `📝 Nội dung xử lý:\n${resultContent}`;
