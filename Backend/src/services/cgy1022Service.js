@@ -47,6 +47,14 @@ function getShowPhoneLinhVucSet() {
   );
 }
 
+// Tên danh mục lưu DB có tiền tố nội bộ (VD "An Hải_Môi trường, Hạ tầng") — BẮT BUỘC giữ
+// nguyên khi tra CGY1022_LINHVUC_MAP/getLinhVucId (map theo đúng chuỗi gốc), nhưng không hiển
+// thị tiền tố đó cho dân/cán bộ. Chỉ dùng hàm này ở tầng hiển thị, KHÔNG dùng trước khi gọi
+// getLinhVucId()/shouldShowPhone() — nếu không map sẽ luôn miss.
+function displayCategoryName(name) {
+  return String(name || '').replace(/^[^_]*_/, '');
+}
+
 // Đọc map lĩnh vực từ env (JSON: tên danh mục An Hải → linhVucId 1022)
 function getLinhVucId(categoryName) {
   try {
@@ -88,13 +96,15 @@ function buildPayload(fb) {
   const imageUrls = (fb.imageUrls && fb.imageUrls.length > 0) ? fb.imageUrls : (fb.imageUrl ? [fb.imageUrl] : []);
 
   const linhVucId = getLinhVucId(categoryName);
-  const showPhone = shouldShowPhone(categoryName);
 
   const payload = {
     userId: Number(CONFIG.CGY1022_USER_ID) || 0,
     tenDayDu: fb.displayName || 'Người dân phường An Hải',
     email: CONFIG.CGY1022_DEFAULT_EMAIL,
-    soDienThoai: showPhone ? (fb.contact || '') : '',
+    // 1022 luôn nhận SĐT thật (mọi loại) — cơ quan xử lý cần liên hệ trực tiếp bất kể lĩnh
+    // vực. Ẩn/hiện SĐT chỉ áp dụng ở phía hệ thống An Hải (dashboard/nhóm nội bộ), xem
+    // shouldShowPhone() dùng trong feedbackService.js và api/routes/feedbacks.js.
+    soDienThoai: fb.contact || '',
     tieuDe,
     noiDungYKien: content,
     noiDienRa: fb.location?.address || 'Phường An Hải, Đà Nẵng',
@@ -175,4 +185,4 @@ async function getFeedbackDetail(gopyId) {
   return res.data;
 }
 
-module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, shouldShowPhone, listFeedbacks, getFeedbackDetail };
+module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, shouldShowPhone, displayCategoryName, listFeedbacks, getFeedbackDetail };

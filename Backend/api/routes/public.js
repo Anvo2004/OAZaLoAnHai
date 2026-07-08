@@ -11,11 +11,13 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 5 },
 })
 
-// GET /api/public/categories — danh sách danh mục cho ReportApp chọn (ẩn zaloGroupId nội bộ)
+// GET /api/public/categories — danh sách danh mục cho ReportApp chọn (ẩn zaloGroupId nội bộ,
+// tên đã bỏ tiền tố nội bộ để hiển thị gọn — VD "Môi trường, Hạ tầng" thay vì "An Hải_...")
 router.get('/categories', async (req, res) => {
   try {
+    const { displayCategoryName } = require('../../src/services/cgy1022Service')
     const categories = await Category.find({}, 'name icon order').sort({ order: 1 }).lean()
-    res.json({ categories })
+    res.json({ categories: categories.map((c) => ({ ...c, name: displayCategoryName(c.name) })) })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

@@ -490,13 +490,13 @@ async function saveFeedback(userId, state) {
 
     const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
-    const catInfo = state.categoryName ? `🏷️ Loại: ${state.categoryName}\n` : '';
+    const { shouldShowPhone, displayCategoryName } = require('./cgy1022Service');
+    const catInfo = state.categoryName ? `🏷️ Loại: ${displayCategoryName(state.categoryName)}\n` : '';
     const locationInfo = state.location?.address ? `📍 Địa chỉ: ${state.location.address}\n` : '';
     const imageInfo = imageUrls.length > 0
       ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
       : '🖼️ Ảnh: Không có';
 
-    const { shouldShowPhone } = require('./cgy1022Service');
     const contactLine = shouldShowPhone(state.categoryName) ? `📞 Liên hệ: ${state.contact}\n` : '';
 
     const groupMsg =
@@ -578,17 +578,19 @@ async function createFeedbackEntry({
 
   const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   const nameInfo = displayName ? `👤 Tên: ${displayName}\n` : '';
-  const catInfo = categoryName ? `🏷️ Loại: ${categoryName}\n` : '';
+  const { shouldShowPhone, displayCategoryName } = require('./cgy1022Service');
+  // shouldShowPhone() PHẢI dùng categoryName gốc (còn tiền tố) để tra đúng CGY1022_LINHVUC_MAP —
+  // displayCategoryName() chỉ áp dụng ở TEXT hiển thị, không được đổi trước khi tra map.
+  const catInfo = categoryName ? `🏷️ Loại: ${displayCategoryName(categoryName)}\n` : '';
   const locationInfo = loc.address ? `📍 Địa chỉ: ${loc.address}\n` : '';
   const imageInfo = imageUrls.length > 0
     ? `🖼️ ${imageUrls.length} ảnh:\n${imageUrls.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}`
     : '🖼️ Ảnh: Không có';
   const codeLine = sync.ok && sync.gopyId ? `🆔 Mã phản ánh: ${sync.gopyId}` : '🆔 Mã phản ánh: đang đồng bộ...';
-  const { shouldShowPhone } = require('./cgy1022Service');
   const contactLine = shouldShowPhone(categoryName) ? `📞 Liên hệ: ${contact}\n` : '';
 
   const groupMsg =
-    `📩 PHẢN ÁNH MỚI (ReportApp) - ${now}\n` +
+    `📩 PHẢN ÁNH MỚI - ${now}\n` +
     `${'─'.repeat(30)}\n` +
     `📌 Tiêu đề: ${title}\n` +
     `${nameInfo}` +

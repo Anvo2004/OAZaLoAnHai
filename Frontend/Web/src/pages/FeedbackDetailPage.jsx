@@ -200,7 +200,9 @@ export default function FeedbackDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Liên hệ</p>
-                  <p className="font-medium">{fb.contact}</p>
+                  <p className="font-medium" title={fb.contactHidden ? 'Loại phản ánh này không hiển thị SĐT trên hệ thống' : undefined}>
+                    {fb.contactHidden ? 'Ẩn danh' : fb.contact}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Ngày gửi</p>

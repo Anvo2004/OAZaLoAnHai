@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Eye, Inbox, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import StatusBadge from '@/components/feedback/StatusBadge'
@@ -169,7 +169,14 @@ export default function FeedbacksPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        {fb.avatar ? (
+                        {fb.contactHidden ? (
+                          <div
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500 shadow-sm"
+                            title="Ẩn thông tin liên hệ — loại phản ánh này không cần hiển thị SĐT"
+                          >
+                            <EyeOff className="h-3.5 w-3.5" />
+                          </div>
+                        ) : fb.avatar ? (
                           <img
                             src={fb.avatar}
                             alt={fb.displayName || fb.contact || '?'}
@@ -177,17 +184,19 @@ export default function FeedbacksPage() {
                             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                           />
                         ) : null}
-                        <div
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarColor(fb.userId || fb.displayName || fb.contact || '?')} text-white text-xs font-bold shadow-sm`}
-                          style={{ display: fb.avatar ? 'none' : 'flex' }}
-                        >
-                          {(fb.displayName || fb.contact || '?')[0].toUpperCase()}
-                        </div>
+                        {!fb.contactHidden && (
+                          <div
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarColor(fb.userId || fb.displayName || fb.contact || '?')} text-white text-xs font-bold shadow-sm`}
+                            style={{ display: fb.avatar ? 'none' : 'flex' }}
+                          >
+                            {(fb.displayName || fb.contact || '?')[0].toUpperCase()}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-700 truncate max-w-[120px] group-hover:text-emerald-600 transition-colors">
                             {fb.displayName || '(Ẩn danh)'}
                           </p>
-                          <p className="text-[11px] text-slate-400">{fb.contact}</p>
+                          <p className="text-[11px] text-slate-400">{fb.contactHidden ? 'Ẩn danh' : fb.contact}</p>
                         </div>
                       </div>
                     </td>

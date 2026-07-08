@@ -18,6 +18,19 @@ const { sendMail, buildFeedbackEmailHtml } = require('../../src/utils/mailer')
 const { getProfiles } = require('../../src/admin/profileCache')
 const { uploadBufferGeneric } = require('../../src/utils/cloudinary')
 const { notifyAssignment } = require('../../src/services/assignmentNotify')
+const { shouldShowPhone } = require('../../src/services/cgy1022Service')
+
+// Ẩn SĐT + avatar thật trên dashboard web cho các loại phản ánh không cần liên hệ trực tiếp
+// (Văn hoá-Giáo dục-Y tế, Dịch vụ công-TTHC) — chỉ giữ tên Zalo hiển thị, không đụng gì tới
+// dữ liệu gửi lên Cổng góp ý 1022 (1022 luôn nhận SĐT thật, xem cgy1022Service.js buildPayload()).
+function redactContactIfNeeded(fb) {
+  if (!shouldShowPhone(fb.categoryId?.name || '')) {
+    fb.contact = ''
+    fb.avatar = ''
+    fb.contactHidden = true
+  }
+  return fb
+}
 
 const memoryUpload = multer({ storage: multer.memoryStorage() })
 
@@ -101,6 +114,7 @@ router.get('/', async (req, res) => {
         if (!f.avatar) f.avatar = p.avatar || ''
       })
     }
+    feedbacks.forEach(redactContactIfNeeded)
 
     res.json({ feedbacks, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } })
   } catch (err) {
@@ -135,6 +149,7 @@ router.get('/:id', async (req, res) => {
         if (!feedback.avatar) feedback.avatar = p.avatar || ''
       }
     }
+    redactContactIfNeeded(feedback)
 
     // Lấy danh sách cán bộ để phân công
     const me = req.user
