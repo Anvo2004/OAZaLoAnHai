@@ -88,8 +88,14 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
     try {
       const { lat, lng } = await detectLocation()
       setCoords({ lat, lng })
-      setAddress('')
       setLocationMode('auto')
+      // Hiện tên địa chỉ ngay để dân thấy trước khi gửi, thay vì chỉ có tọa độ thô
+      try {
+        const res = await api.get('/reverse-geocode', { params: { lat, lng } })
+        setAddress(res.data.address || '')
+      } catch {
+        setAddress('')
+      }
     } catch (err) {
       setLocationMode('manual')
       setError('Không lấy được vị trí tự động. Vui lòng nhập tay bên dưới.')
@@ -194,7 +200,7 @@ export default function FeedbackForm({ profile, accessToken, onSuccess }) {
 
             <div className="space-y-2">
               <Label htmlFor="title">Tiêu đề</Label>
-              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="VD: Đèn đường hư tại kiệt 82 Nguyễn Văn Linh" required />
+              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="VD: Tập kết rác thải gây ô nhiễm" required />
             </div>
 
             <div className="space-y-2">

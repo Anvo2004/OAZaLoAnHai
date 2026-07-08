@@ -21,6 +21,24 @@ router.get('/categories', async (req, res) => {
   }
 })
 
+// GET /api/public/reverse-geocode — ReportApp gọi ngay sau khi bấm "Lấy vị trí tự động" để
+// hiện tên địa chỉ ngay trên form (trước đây chỉ điền lúc submit, dân không thấy trước).
+// Dùng chung reverseGeocodeAddress() với luồng chatbot — không lặp logic gọi Nominatim.
+router.get('/reverse-geocode', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat)
+    const lng = parseFloat(req.query.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ error: 'Thiếu hoặc sai lat/lng' })
+    }
+    const { reverseGeocodeAddress } = require('../../src/services/feedbackService')
+    const address = await reverseGeocodeAddress(lat, lng)
+    res.json({ address: address || '' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Đổi code OAuth v4 (Đăng nhập bằng Zalo, dùng cho ReportApp) lấy access_token cá nhân
 async function exchangeCodeForToken(code) {
   const tokenRes = await axios.post(
