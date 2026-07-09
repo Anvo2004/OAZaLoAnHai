@@ -55,6 +55,19 @@ function displayCategoryName(name) {
   return String(name || '').replace(/^[^_]*_/, '');
 }
 
+// Kiểm tra danh mục có được khai báo TƯỜNG MINH trong CGY1022_LINHVUC_MAP hay không — KHÔNG
+// áp dụng fallback CGY1022_LINHVUC_DEFAULT (khác getLinhVucId()). Dùng để lọc danh sách danh
+// mục hiển thị cho dân (ReportApp) chỉ còn đúng các loại phản ánh chính thức, loại bỏ danh
+// mục phụ trợ nội bộ (VD "Hỗ trợ OAZalo") hay rác test chưa từng được map linhVucId.
+function isMappedCategory(categoryName) {
+  try {
+    const map = JSON.parse(CONFIG.CGY1022_LINHVUC_MAP);
+    return Boolean(categoryName && map[categoryName] != null);
+  } catch (e) {
+    return false;
+  }
+}
+
 // Đọc map lĩnh vực từ env (JSON: tên danh mục An Hải → linhVucId 1022)
 function getLinhVucId(categoryName) {
   try {
@@ -185,4 +198,4 @@ async function getFeedbackDetail(gopyId) {
   return res.data;
 }
 
-module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, shouldShowPhone, displayCategoryName, listFeedbacks, getFeedbackDetail };
+module.exports = { isConfigured, pushFeedback, buildPayload, getLinhVucId, isMappedCategory, shouldShowPhone, displayCategoryName, listFeedbacks, getFeedbackDetail };

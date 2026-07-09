@@ -13,11 +13,14 @@ const upload = multer({
 
 // GET /api/public/categories — danh sách danh mục cho ReportApp chọn (ẩn zaloGroupId nội bộ,
 // tên đã bỏ tiền tố nội bộ để hiển thị gọn — VD "Môi trường, Hạ tầng" thay vì "An Hải_...")
+// Chỉ trả về danh mục ĐÃ map linhVucId 1022 (4 loại chính thức) — loại bỏ các danh mục phụ
+// trợ nội bộ (VD "Hỗ trợ OAZalo") hoặc rác test không dùng cho luồng góp ý công dân.
 router.get('/categories', async (req, res) => {
   try {
-    const { displayCategoryName } = require('../../src/services/cgy1022Service')
+    const { displayCategoryName, isMappedCategory } = require('../../src/services/cgy1022Service')
     const categories = await Category.find({}, 'name icon order').sort({ order: 1 }).lean()
-    res.json({ categories: categories.map((c) => ({ ...c, name: displayCategoryName(c.name) })) })
+    const official = categories.filter((c) => isMappedCategory(c.name))
+    res.json({ categories: official.map((c) => ({ ...c, name: displayCategoryName(c.name) })) })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
