@@ -32,9 +32,11 @@ module.exports = {
   CGY1022_GOPY_PATH: process.env.CGY1022_GOPY_PATH || '/api/gopy',
   CGY1022_USER_ID: process.env.CGY1022_USER_ID || '0',
   CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || 'gopy@anhai.dxvtech.vn',
-  // Nguồn góp ý riêng của An Hải đã đăng ký sẵn trên 1022 (xác nhận qua dropdown "Nguồn góp ý"
-  // trên trang quản lý gopy.danang.gov.vn) — thay cho "Zalo" chung chung trước đây.
-  CGY1022_NGUON: process.env.CGY1022_NGUON || 'Góp ý Zalo P.An Hải',
+  // "Zalo" là giá trị DUY NHẤT đã xác nhận hoạt động thật (test "Góp ý Zalo P.An Hải" — dù
+  // đúng byte với tên hiện trong dropdown quản lý 1022 — bị 1022 trả 404 "does not exist",
+  // xem Feedback _id=6a4f13eddb854f10d2a78d45 lỗi thật trên production ngày 09/07/2026).
+  // KHÔNG đổi giá trị này nếu chưa xác nhận lại chính xác với bên quản trị 1022.
+  CGY1022_NGUON: process.env.CGY1022_NGUON || 'Zalo',
   // JSON map tên danh mục An Hải → linhVucId của 1022, VD: {"Môi trường, Hạ tầng, Xây dựng": 4}
   CGY1022_LINHVUC_MAP: process.env.CGY1022_LINHVUC_MAP || '{}',
   CGY1022_LINHVUC_DEFAULT: process.env.CGY1022_LINHVUC_DEFAULT || '',
