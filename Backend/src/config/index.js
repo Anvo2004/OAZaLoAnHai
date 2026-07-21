@@ -31,7 +31,7 @@ module.exports = {
   CGY1022_PASSWORD: process.env.CGY1022_PASSWORD || '',
   CGY1022_GOPY_PATH: process.env.CGY1022_GOPY_PATH || '/api/gopy',
   CGY1022_USER_ID: process.env.CGY1022_USER_ID || '0',
-  CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || 'gopy@anhai.dxvtech.vn',
+  CGY1022_DEFAULT_EMAIL: process.env.CGY1022_DEFAULT_EMAIL || '',
   // "ZaloAnHai" (không dấu, viết liền) đã xác nhận hoạt động thật (test cô lập trả gopyId=105352
   // ngày 09/07/2026) — là GIÁ TRỊ API thực sự đằng sau nhãn hiển thị "Góp ý Zalo P.An Hải" trên
   // dropdown quản lý 1022 (nhãn hiển thị ≠ giá trị API, gửi đúng nhãn "Góp ý Zalo P.An Hải" bị
