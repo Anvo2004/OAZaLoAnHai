@@ -14,7 +14,6 @@ const {
   uploadImageFromUrlToZalo,
   uploadFileFromUrlToZalo
 } = require('../../src/utils/zaloApi')
-const { sendMail, buildFeedbackEmailHtml } = require('../../src/utils/mailer')
 const { getProfiles } = require('../../src/admin/profileCache')
 const { uploadBufferGeneric } = require('../../src/utils/cloudinary')
 const { notifyAssignment } = require('../../src/services/assignmentNotify')
@@ -373,18 +372,13 @@ router.post('/:id/draft', requireRole('officer', 'staff'), async (req, res) => {
     const leaders = await AdminUser.find({
       role: 'dept_leader',
       $or: [{ categoryIds: feedback.categoryId?._id }, { categoryIds: { $size: 0 } }],
-    }, 'fullName email').lean()
+    }, 'fullName').lean()
 
     await Promise.all(leaders.map((l) => Notification.create({
       userId: l._id,
       type: 'draft_submitted',
       feedbackId: feedback._id,
       message: `Dự thảo phản ánh #${shortCode} đang chờ bạn duyệt`,
-    })))
-    await Promise.all(leaders.filter((l) => l.email).map((l) => sendMail({
-      to: l.email,
-      subject: `[UBND An Hải] Dự thảo chờ duyệt #${shortCode}`,
-      html: buildFeedbackEmailHtml({ heading: 'Có dự thảo phản ánh đang chờ bạn duyệt', feedback, shortCode }),
     })))
 
     res.json({ ok: true })

@@ -1,13 +1,11 @@
 const AdminUser = require('../models/AdminUser')
 const Notification = require('../models/Notification')
 const { sendZaloToGroup, sendZaloText } = require('../utils/zaloApi')
-const { sendMail, buildFeedbackEmailHtml } = require('../utils/mailer')
-
-// Thông báo cho cán bộ được phân công (chuông app + email + @mention nhóm Zalo).
+// Thông báo cho cán bộ được phân công (chuông app + @mention nhóm Zalo + tin nhắn Zalo cá nhân).
 // Dùng chung cho route phân công ở React API (api/routes/feedbacks.js) và admin EJS legacy (admin/routes/feedbacks.js)
 // để tránh tình trạng phân công qua 1 trong 2 nơi mà cán bộ không nhận được thông báo nào.
 async function notifyAssignment(feedback, assignedTo, { hasAttachments = false } = {}) {
-  const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId email').lean()
+  const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId').lean()
   const catName = feedback.categoryId?.name || ''
   const groupId = feedback.categoryId?.zaloGroupId
   const shortCode = feedback._id.toString().slice(-5).toUpperCase()
@@ -18,14 +16,6 @@ async function notifyAssignment(feedback, assignedTo, { hasAttachments = false }
     feedbackId: feedback._id,
     message: `Bạn được phân công xử lý phản ánh #${shortCode}`,
   })
-
-  if (officer?.email) {
-    await sendMail({
-      to: officer.email,
-      subject: `[UBND An Hải] Phân công xử lý phản ánh #${shortCode}`,
-      html: buildFeedbackEmailHtml({ heading: 'Bạn được phân công xử lý phản ánh mới', feedback, shortCode }),
-    })
-  }
 
   const mentionTag = `@${officer?.fullName || assignedTo}`
   const msg =
