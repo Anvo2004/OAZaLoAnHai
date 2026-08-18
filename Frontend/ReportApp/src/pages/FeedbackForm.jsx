@@ -56,7 +56,7 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
   const [categories, setCategories] = useState([])
   const [categoryId, setCategoryId] = useState('')
   const [title, setTitle] = useState('')
-  const [contact, setContact] = useState('')
+  const [contact, setContact] = useState(profile.phone || '')
   const [content, setContent] = useState('')
   const [images, setImages] = useState([]) // [{file, previewUrl}]
   const [address, setAddress] = useState('')

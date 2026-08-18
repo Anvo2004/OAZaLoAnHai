@@ -12,6 +12,7 @@ export function buildZaloLoginUrl() {
     app_id: ZALO_APP_ID,
     redirect_uri: redirectUri,
     state: Math.random().toString(36).slice(2),
+    scope: 'phone',
   })
   return `https://oauth.zaloapp.com/v4/permission?${params.toString()}`
 }

@@ -60,12 +60,12 @@ async function exchangeCodeForToken(code) {
 // do client tự gửi (tránh giả mạo danh tính để gửi phản ánh thay người khác)
 async function fetchZaloProfile(accessToken) {
   const profileRes = await axios.get('https://graph.zalo.me/v2.0/me', {
-    params: { fields: 'id,name,picture' },
+    params: { fields: 'id,name,picture,phone' },
     headers: { access_token: accessToken },
   })
-  const { id, name, picture } = profileRes.data || {}
+  const { id, name, picture, phone } = profileRes.data || {}
   if (!id) throw new Error(`Không lấy được thông tin Zalo: ${JSON.stringify(profileRes.data)}`)
-  return { id: String(id), name: name || '', avatar: picture?.data?.url || '' }
+  return { id: String(id), name: name || '', avatar: picture?.data?.url || '', phone: phone || '' }
 }
 
 // POST /api/public/zalo-login — đổi code lấy access_token + profile cho ReportApp
