@@ -114,12 +114,6 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
     e.preventDefault()
     setError('')
 
-    const isPhone = /^(0|\+84)[3-9]\d{8}$/.test(contact.replace(/\s/g, ''))
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.trim())
-    if (!isPhone && !isEmail) {
-      setError('Vui lòng nhập SĐT (VD: 0912345678) hoặc email hợp lệ')
-      return
-    }
     if (title.trim().length < 5) {
       setError('Tiêu đề cần ít nhất 5 ký tự')
       return
@@ -210,11 +204,6 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
             <div className="space-y-2">
               <Label htmlFor="title">Tiêu đề</Label>
               <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="VD: Tập kết rác thải gây ô nhiễm" required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact">Số điện thoại</Label>
-              <Input id="contact" value={contact} onChange={e => setContact(e.target.value)} placeholder="Vui lòng nhập số điện thoại" required />
             </div>
 
             <div className="space-y-2">

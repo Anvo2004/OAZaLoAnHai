@@ -88,10 +88,7 @@ router.post('/feedbacks', upload.array('images', 5), async (req, res) => {
     const { accessToken, contact, categoryId, title, content, address, lat, lng, source } = req.body
     if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
 
-    const { isPhone, isEmail, createFeedbackEntry } = require('../../src/services/feedbackService')
-    if (!contact || (!isPhone(contact) && !isEmail(contact))) {
-      return res.status(400).json({ error: 'SĐT hoặc email không hợp lệ' })
-    }
+    const { createFeedbackEntry } = require('../../src/services/feedbackService')
     if (!title || title.trim().length < 5) {
       return res.status(400).json({ error: 'Tiêu đề quá ngắn (tối thiểu 5 ký tự)' })
     }
