@@ -52,4 +52,25 @@ async function uploadBufferGeneric(buffer, publicId, resourceType = 'image') {
   });
 }
 
-module.exports = { uploadFromUrl, uploadFromBuffer, uploadFromZaloImageUrl, uploadBufferGeneric };
+// Upload từ URL kèm thu nhỏ (incoming transformation — ảnh lưu trên Cloudinary đã là bản nhỏ).
+// Dùng cho cover bài viết Zalo: Zalo từ chối ảnh cover ~1MB trở lên ("Upload media failed").
+// publicId cố định theo bài → chạy lại thì ghi đè, không sinh ảnh rác.
+async function uploadResizedFromUrl(imageUrl, publicId, { width = 1280 } = {}) {
+  const result = await cloudinary.uploader.upload(imageUrl, {
+    folder: 'anhai-dangtin',
+    public_id: publicId,
+    overwrite: true,
+    resource_type: 'image',
+    transformation: [{ width, crop: 'limit', quality: 'auto:good', fetch_format: 'jpg' }],
+  });
+  return result.secure_url;
+}
+
+function isCloudinaryConfigured() {
+  return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+}
+
+module.exports = {
+  uploadFromUrl, uploadFromBuffer, uploadFromZaloImageUrl, uploadBufferGeneric,
+  uploadResizedFromUrl, isCloudinaryConfigured,
+};

@@ -21,6 +21,21 @@ async function zaloPost(url, data) {
   return res;
 }
 
+// GET tương tự zaloPost: cùng token + retry 1 lần sau refresh khi gặp -216
+async function zaloGet(url, params) {
+  const doRequest = (token) => axios.get(url, { params, headers: { access_token: token } });
+
+  let res = await doRequest(getToken());
+
+  if (res.data?.error === -216) {
+    console.warn('[ZaloToken] Token hết hạn, đang refresh...');
+    const newToken = await refreshAccessToken();
+    res = await doRequest(newToken);
+  }
+
+  return res;
+}
+
 async function sendZaloText(userId, text) {
   try {
     const res = await zaloPost(
@@ -498,6 +513,8 @@ async function uploadFileFromUrlToZalo(url, originalFilename) {
 }
 
 module.exports = {
+  zaloPost,
+  zaloGet,
   sendZaloText,
   sendZaloLinkButton,
   sendZaloTextToGroup,

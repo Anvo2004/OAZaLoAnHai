@@ -74,6 +74,15 @@ Admin (browser) → Frontend/Web/ (React SPA, Vercel)
 | `Backend/admin/` | Legacy EJS admin panel at `/admin/*` (session auth, still functional) |
 | `Frontend/Web/` | React 19 + Vite + Tailwind + React Query — main admin dashboard |
 
+### Tự động đăng tin (anhai.danang.gov.vn → bài viết Zalo OA)
+
+`Backend/src/services/dangTinService.js` chạy trong process server (mỗi 10 phút), quét trang phường và **chỉ tạo** bài viết trên OA (không broadcast). Port từ THUONGDUC `frontend/DangTin`.
+- Trang An Hải là **DotNetNuke**, không phải vnPortal VNPT: `/api/public/*` đều 404 → quét HTML (`Backend/src/utils/anhaiPortal.js`). Kho văn bản (`/van-ban`, module QTI_VanBan) đang trống; văn bản thực tế đăng dạng tin ở group 110 (Thông báo) và 153 (Phổ biến pháp luật).
+- OA đã có **một hệ thống khác** tự đăng tin tức (lô 10:15 và 16:15), bỏ sót group 110/153 → dùng `DANGTIN_ARTICLE_GROUPS=110,153` để không tạo trùng; service còn lọc tiêu đề trùng với ~30 bài mới nhất trên OA.
+- Token: dùng `zaloApi.zaloPost/zaloGet` (token + refresh chung). Script riêng (`scripts/dangtin-sync.js` dry-run, `scripts/dangtin-test-cover.js`) chỉ đọc token từ Redis qua `zaloReadOnlyToken.js` — **không bao giờ require `zaloToken.js`** (nó tự refresh khi được require).
+- Ảnh cover: Zalo từ chối ảnh ~1MB+ (lỗi -200 "Upload media failed" ở bước verify) → `coverImage.js` thu nhỏ qua Cloudinary; lỗi thì fallback `DANGTIN_DEFAULT_COVER_URL`.
+- Mặc định dry-run (`DANGTIN_SEND_ENABLED=false`); trạng thái "đã gửi" ở collection `dangtinitems`.
+
 ### Two admin systems
 
 1. **`Backend/admin/` (EJS)** — server-side rendered, session auth, at `/admin` route. Legacy but functional.
@@ -125,6 +134,7 @@ Zalo group notifications are sent at each transition; `@mention` is included whe
 | `ADMIN_PASSWORD` | `Backend/src/admin/auth.js` (legacy EJS login) |
 | `PUBLIC_URL` | `Backend/api/routes/broadcast.js` (video URL generation) |
 | `PORT` | `Backend/server.js` / `Backend/src/config/index.js` (default 3001) |
+| `DANGTIN_*` | `Backend/src/services/dangTinService.js` — xem mô tả từng biến trong `Backend/src/config/index.js` |
 
 ### Data models
 
