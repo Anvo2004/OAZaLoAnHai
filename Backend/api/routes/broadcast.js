@@ -7,27 +7,10 @@ const { syncFollowers, getStoredFollowers, getSyncedAt } = require('../../src/ad
 const { getStoredGroups, addGroup, removeGroup } = require('../../src/admin/groupService')
 const { sendToUsers, getJob } = require('../../src/admin/broadcastService')
 const { getLogs } = require('../../src/admin/logService')
-const { uploadImageToZalo, uploadFileToZalo, getZaloUserProfile } = require('../../src/utils/zaloApi')
+const { uploadImageToZalo, uploadFileToZalo } = require('../../src/utils/zaloApi')
 const ScheduledMessage = require('../../src/models/ScheduledMessage')
 
 const UPLOAD_DIR = path.join(__dirname, '../../public/images')
-
-// ── Debug getprofile (public — không cần auth để test) ────────────
-router.get('/debug-profile/:userId', async (req, res) => {
-  const axios = require('axios')
-  const { getToken } = require('../../src/utils/zaloToken')
-  try {
-    const token = getToken()
-    const data = encodeURIComponent(JSON.stringify({ user_id: req.params.userId }))
-    const result = await axios.get(
-      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${data}`,
-      { headers: { access_token: token } }
-    )
-    res.json({ raw: result.data, token_prefix: token.slice(0, 20) + '...' })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
 
 // Tất cả endpoints bên dưới cho superadmin + dept_leader
 router.use(requireRole('superadmin', 'dept_leader'))

@@ -81,10 +81,6 @@ function isUrl(text) {
   return /^https?:\/\/.+/i.test(text.trim());
 }
 
-function isEmail(text) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text.trim());
-}
-
 // Thay cho startFeedback() — luồng góp ý nay chuyển sang ReportApp (form web), chatbot chỉ
 // còn nhiệm vụ mở link. startFeedback/saveFeedback (hội thoại cũ) vẫn giữ nguyên, không xoá,
 // để không phá hội thoại đang dở của người dùng cũ nếu còn state tồn đọng.
@@ -640,5 +636,5 @@ function isFeedbackTrigger(text) {
 
 module.exports = {
   startFeedback, promptReportApp, promptReportAppHistory, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
-  geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone, isEmail,
+  geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone,
 };

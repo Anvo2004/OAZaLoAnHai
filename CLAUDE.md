@@ -131,7 +131,6 @@ Zalo group notifications are sent at each transition; `@mention` is included whe
 | `CLOUDINARY_*` | `Backend/src/utils/cloudinary.js` |
 | `JWT_SECRET` | `Backend/api/routes/auth.js`, `Backend/api/middleware/requireAuth.js` |
 | `SESSION_SECRET` | `Backend/server.js` express-session |
-| `ADMIN_PASSWORD` | `Backend/src/admin/auth.js` (legacy EJS login) |
 | `PUBLIC_URL` | `Backend/api/routes/broadcast.js` (video URL generation) |
 | `PORT` | `Backend/server.js` / `Backend/src/config/index.js` (default 3001) |
 | `DANGTIN_*` | `Backend/src/services/dangTinService.js` — xem mô tả từng biến trong `Backend/src/config/index.js` |

@@ -159,10 +159,6 @@ async function sendZaloTextToGroup(groupId, text) {
 }
 
 // Tương thích ngược — gửi vào nhóm mặc định
-async function sendZaloGroupText(text) {
-  return sendZaloToGroup(text, CONFIG.ZALO_GROUP_ID);
-}
-
 // Gửi nhiều ảnh đến user (mỗi ảnh 1 message)
 async function sendZaloImages(userId, attachmentIds) {
   for (const attachId of attachmentIds) {
@@ -296,35 +292,6 @@ async function getZaloUserProfile(userId) {
   } catch (err) {
     console.error('[Zalo] Lấy profile thất bại:', err.message);
     return null;
-  }
-}
-
-async function getZaloGroupMembers(groupId) {
-  try {
-    const token = getToken();
-    const params = JSON.stringify({ group_id: String(groupId), offset: 0, count: 50 });
-    const res = await axios.get(
-      `https://openapi.zalo.me/v2.0/oa/groupchat/getmember?data=${encodeURIComponent(params)}`,
-      { headers: { access_token: token } }
-    );
-
-    console.log('[Zalo] getGroupMembers raw response:', JSON.stringify(res.data));
-
-    if (res.data?.error !== 0) {
-      console.error('[Zalo] getGroupMembers lỗi API:', res.data?.error, res.data?.message);
-      return { members: [], raw: res.data };
-    }
-
-    const d = res.data.data;
-    const members = Array.isArray(d) ? d
-      : Array.isArray(d?.members) ? d.members
-      : [];
-
-    console.log(`[Zalo] getGroupMembers groupId=${groupId} => ${members.length} thành viên`);
-    return { members, raw: res.data };
-  } catch (err) {
-    console.error('[Zalo] getGroupMembers thất bại:', err.message);
-    return { members: [], raw: { error: -1, message: err.message } };
   }
 }
 
@@ -519,7 +486,6 @@ module.exports = {
   sendZaloLinkButton,
   sendZaloTextToGroup,
   sendZaloToGroup,
-  sendZaloGroupText,
   sendZaloImages,
   sendZaloImagesToGroup,
   sendZaloImageWithLink,
@@ -530,7 +496,6 @@ module.exports = {
   uploadImageBufferToZalo,
   uploadImageToZalo,
   uploadFileToZalo,
-  getZaloGroupMembers,
   getGroupsOfOA,
   getGroupMembersV3,
   createZaloGroup,
