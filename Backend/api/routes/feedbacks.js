@@ -6,6 +6,7 @@ const AdminUser = require('../../src/models/AdminUser')
 const Category = require('../../src/models/Category')
 const Notification = require('../../src/models/Notification')
 const requireRole = require('../middleware/requireRole')
+const { withScope, asObjectId, asEnum } = require('../middleware/feedbackScope')
 const {
   sendZaloText,
   sendZaloToGroup,
@@ -54,52 +55,39 @@ router.get('/', async (req, res) => {
   try {
     const { status, assignedTo, categoryId, q, page = 1 } = req.query
     const limit = 20
-    const skip = (parseInt(page) - 1) * limit
+    const skip = (Math.max(parseInt(page, 10) || 1, 1) - 1) * limit
+
+    // Bộ lọc người dùng chọn — mọi tham số đều ép kiểu, không nhận object/toán tử Mongo
     const filter = {}
-
-    // Lọc theo quyền: officer chỉ thấy phản ánh được phân công cho mình
-    const me = req.user
-    if (me.role === 'officer' || me.role === 'staff') {
-      filter.assignedTo = me.id
-    } else if (me.role === 'dept_leader' && me.categoryIds?.length) {
-      // Xem theo danh mục phụ trách + phản ánh được phân công trực tiếp cho mình
-      filter.$or = [
-        { categoryId: { $in: me.categoryIds } },
-        { assignedTo: me.id },
-      ]
-    }
-
-    if (status) filter.status = status
+    const pickedStatus = asEnum(status, ['pending', 'draft', 'processing', 'resolved', 'done'])
+    if (pickedStatus) filter.status = pickedStatus
     if (assignedTo === 'none') filter.assignedTo = null
-    else if (assignedTo) filter.assignedTo = assignedTo
-    if (categoryId) filter.categoryId = categoryId
-    if (q) {
+    else if (asObjectId(assignedTo)) filter.assignedTo = assignedTo
+    if (asObjectId(categoryId)) filter.categoryId = categoryId
+    if (typeof q === 'string' && q.trim()) {
       const cleanQ = q.replace(/^#/, '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const regex = new RegExp(cleanQ, 'i')
-      const searchOr = [
+      filter.$or = [
         { displayName: regex },
         { contact: regex },
         { content: regex },
         { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: cleanQ, options: 'i' } } },
       ]
-      // Nếu đã có $or từ access filter (dept_leader), kết hợp bằng $and để không ghi đè
-      if (filter.$or) {
-        filter.$and = [{ $or: filter.$or }, { $or: searchOr }]
-        delete filter.$or
-      } else {
-        filter.$or = searchOr
-      }
     }
 
+    // Phạm vi theo quyền được AND vào SAU CÙNG → tham số trên URL không ghi đè được
+    // (lỗi cũ: ?assignedTo=<id người khác> hoặc ?assignedTo=none xoá mất giới hạn của officer)
+    const scoped = withScope(req.user, filter)
+
     const [feedbacks, total] = await Promise.all([
-      Feedback.find(filter)
+      Feedback.find(scoped)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate('assignedTo', 'fullName')
         .populate('categoryId', 'name icon')
         .lean(),
-      Feedback.countDocuments(filter),
+      Feedback.countDocuments(scoped),
     ])
 
     // Enrich displayName + avatar từ Redis profile cache

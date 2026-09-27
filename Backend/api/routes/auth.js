@@ -3,13 +3,22 @@ const jwt = require('jsonwebtoken')
 const AdminUser = require('../../src/models/AdminUser')
 const requireAuth = require('../middleware/requireAuth')
 const { sendZaloText } = require('../../src/utils/zaloApi')
+const { rateLimit } = require('../middleware/rateLimit')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'anhai-jwt-secret-2025'
 
-// OTP lưu trong memory: { username → { otp, expiresAt } }
+// OTP lưu trong memory: { username → { otp, expiresAt, attempts } }
 const otpStore = new Map()
+const OTP_MAX_ATTEMPTS = 5
 
-router.post('/login', async (req, res) => {
+// Chống dò mật khẩu và dò mã OTP (6 chữ số → không giới hạn là dò ra được)
+const loginLimit = rateLimit({
+  name: 'login', windowMs: 15 * 60 * 1000, max: 10,
+  message: 'Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút.',
+})
+const otpLimit = rateLimit({ name: 'otp', windowMs: 15 * 60 * 1000, max: 5 })
+
+router.post('/login', loginLimit, async (req, res) => {
   const { username, password } = req.body
   if (!username || !password) {
     return res.status(400).json({ error: 'Vui lòng nhập đầy đủ thông tin' })
@@ -36,7 +45,7 @@ router.post('/login', async (req, res) => {
 })
 
 // POST /api/auth/forgot-password — gửi OTP 6 số qua Zalo
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', otpLimit, async (req, res) => {
   const { username } = req.body
   if (!username) return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập' })
   try {
@@ -47,7 +56,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000))
-    otpStore.set(username.trim().toLowerCase(), { otp, expiresAt: Date.now() + 5 * 60 * 1000 })
+    otpStore.set(username.trim().toLowerCase(), { otp, expiresAt: Date.now() + 5 * 60 * 1000, attempts: 0 })
 
     await sendZaloText(
       user.zaloUserId,
@@ -64,7 +73,7 @@ router.post('/forgot-password', async (req, res) => {
 })
 
 // POST /api/auth/reset-password — xác minh OTP và đặt mật khẩu mới
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', otpLimit, async (req, res) => {
   const { username, otp, newPassword } = req.body
   if (!username || !otp || !newPassword) return res.status(400).json({ error: 'Thiếu thông tin' })
 
@@ -76,7 +85,13 @@ router.post('/reset-password', async (req, res) => {
     otpStore.delete(key)
     return res.status(400).json({ error: 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.' })
   }
-  if (entry.otp !== otp.trim()) return res.status(400).json({ error: 'Mã OTP không đúng' })
+  // Huỷ mã sau 5 lần nhập sai — chặn dò hết 1 triệu tổ hợp bằng nhiều IP khác nhau
+  entry.attempts = (entry.attempts || 0) + 1
+  if (entry.attempts > OTP_MAX_ATTEMPTS) {
+    otpStore.delete(key)
+    return res.status(400).json({ error: 'Nhập sai mã quá nhiều lần. Vui lòng yêu cầu mã mới.' })
+  }
+  if (entry.otp !== String(otp).trim()) return res.status(400).json({ error: 'Mã OTP không đúng' })
   if (newPassword.length < 6) return res.status(400).json({ error: 'Mật khẩu mới phải có ít nhất 6 ký tự' })
 
   try {

@@ -2,6 +2,7 @@ const router = require('express').Router()
 const ExcelJS = require('exceljs')
 const Feedback = require('../../src/models/Feedback')
 const requireRole = require('../middleware/requireRole')
+const { withScope } = require('../middleware/feedbackScope')
 
 router.use(requireRole('superadmin', 'dept_leader'))
 
@@ -131,12 +132,13 @@ function isResolvedStatus(s) { return s === 'resolved' || s === 'done' }
 function isProcessingStatus(s) { return s === 'draft' || s === 'processing' }
 function isOverdue(fb, now) { return !!fb.deadline && new Date(fb.deadline) < now && !isResolvedStatus(fb.status) }
 
-async function buildReportData(period, value) {
+// user: chi thong ke/xuat du lieu trong pham vi quyen cua nguoi dang dang nhap
+async function buildReportData(period, value, user) {
   const now = new Date()
   const range = getDateRange(period, value)
   const { start, end, granularity, label } = range
 
-  const feedbacks = await Feedback.find({ createdAt: { $gte: start, $lt: end } })
+  const feedbacks = await Feedback.find(withScope(user, { createdAt: { $gte: start, $lt: end } }))
     .populate('categoryId', 'name icon')
     .populate('assignedTo', 'fullName')
     .sort({ createdAt: 1 })
@@ -180,7 +182,7 @@ async function buildReportData(period, value) {
 
   // ── So sánh với kỳ trước ──
   const prevRange = shiftRange(period, range, -1)
-  const prevFeedbacks = await Feedback.find({ createdAt: { $gte: prevRange.start, $lt: prevRange.end } })
+  const prevFeedbacks = await Feedback.find(withScope(user, { createdAt: { $gte: prevRange.start, $lt: prevRange.end } }))
     .select('status')
     .lean()
   const previous = { total: prevFeedbacks.length, pending: 0, processing: 0, resolved: 0 }
@@ -196,7 +198,7 @@ async function buildReportData(period, value) {
   const trend = await Promise.all(
     trendOffsets.map(async (offset) => {
       const r = shiftRange(period, range, offset)
-      const count = await Feedback.countDocuments({ createdAt: { $gte: r.start, $lt: r.end } })
+      const count = await Feedback.countDocuments(withScope(user, { createdAt: { $gte: r.start, $lt: r.end } }))
       return { label: rangeLabel(period, r), count }
     })
   )
@@ -207,8 +209,9 @@ async function buildReportData(period, value) {
 // GET /api/reports/summary?period=day|week|month|quarter|year&value=...
 router.get('/summary', async (req, res) => {
   try {
-    const { period = 'month', value } = req.query
-    const data = await buildReportData(period, value)
+    const period = typeof req.query.period === 'string' ? req.query.period : 'month'
+    const value = typeof req.query.value === 'string' ? req.query.value : undefined
+    const data = await buildReportData(period, value, req.user)
     res.json({
       range: data.range,
       totals: data.totals,
@@ -226,8 +229,9 @@ router.get('/summary', async (req, res) => {
 // GET /api/reports/export?period=...&value=... — xuất file Excel
 router.get('/export', async (req, res) => {
   try {
-    const { period = 'month', value } = req.query
-    const data = await buildReportData(period, value)
+    const period = typeof req.query.period === 'string' ? req.query.period : 'month'
+    const value = typeof req.query.value === 'string' ? req.query.value : undefined
+    const data = await buildReportData(period, value, req.user)
     const now = new Date()
 
     const wb = new ExcelJS.Workbook()

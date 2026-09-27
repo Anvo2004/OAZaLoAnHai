@@ -3,7 +3,7 @@ import { ArrowLeft, Loader2, Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import BlobBackground from '@/components/BlobBackground'
-import { api } from '@/lib/api'
+import { api, authHeader } from '@/lib/api'
 
 const ACCENT = 'linear-gradient(135deg,#059669 0%,#0d9488 40%,#0891b2 74%,#0ea5e9 100%)'
 
@@ -22,7 +22,7 @@ export default function MyFeedbacksPage({ accessToken, onBack }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/my-feedbacks', { params: { accessToken } })
+    api.get('/my-feedbacks', authHeader(accessToken))
       .then(res => setItems(res.data.items || []))
       .catch(() => { setItems([]); setError('Không tải được danh sách phản ánh.') })
   }, [accessToken])
@@ -32,7 +32,7 @@ export default function MyFeedbacksPage({ accessToken, onBack }) {
     setDetail(null)
     setError('')
     setDetailLoading(true)
-    api.get(`/my-feedbacks/${gopyId}`, { params: { accessToken } })
+    api.get(`/my-feedbacks/${gopyId}`, authHeader(accessToken))
       .then(res => setDetail(res.data))
       .catch(err => setError(err.response?.data?.error || 'Không lấy được trạng thái mới nhất từ Cổng góp ý.'))
       .finally(() => setDetailLoading(false))

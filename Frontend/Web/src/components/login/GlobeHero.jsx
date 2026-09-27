@@ -111,9 +111,8 @@ export default function GlobeHero() {
                 <span style="background:#f3f4f6;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;color:#374151">#${m.id}</span>
                 <span style="margin-left:6px;font-size:11px;color:#6b7280">${new Date(m.createdAt).toLocaleDateString('vi-VN')}</span>
               </div>
-              ${m.address ? `<div style="color:#6b7280;font-size:11px;margin-bottom:3px">📍 ${m.address}</div>` : ''}
-              <div style="color:#374151;margin-bottom:5px">${m.content}</div>
               <span style="background:${color}22;color:${color};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">● ${STATUS_LABEL[m.status] || 'Đang xử lý'}</span>
+              <div style="color:#9ca3af;font-size:10px;margin-top:5px">Vị trí tương đối. Đăng nhập để xem chi tiết.</div>
             </div>`
           L.marker([m.lat, m.lng], { icon: createDotIcon(color) })
             .bindPopup(popup, { maxWidth: 240 })

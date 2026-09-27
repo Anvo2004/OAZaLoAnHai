@@ -12,14 +12,29 @@ const { setTokensManually } = require('./src/utils/zaloToken');
 
 const app = express();
 
-// CORS — cho phép Vercel frontend gọi API
+// Nginx đứng trước nên phải tin X-Forwarded-For, nếu không mọi request đều mang IP 127.0.0.1
+// và giới hạn tần suất (api/middleware/rateLimit.js) sẽ tính chung cho tất cả mọi người.
+app.set('trust proxy', 1);
+
+// CORS — chỉ đúng các origin của dự án. Trước đây nhận mọi tên miền *.vercel.app kèm
+// credentials:true, nghĩa là bất kỳ ai deploy 1 trang lên Vercel cũng gọi được API này
+// kèm cookie phiên của cán bộ đang đăng nhập.
+// Thêm tên miền khác qua CORS_ORIGINS trong .env (ngăn cách bằng dấu phẩy).
+const VERCEL_PROJECT = /^https:\/\/oa-za-lo-an-hai(-[a-z0-9-]+)?\.vercel\.app$/; // gồm cả bản preview
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3001',
+  process.env.PUBLIC_URL,
+  ...(process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    /\.vercel\.app$/,
-    'http://localhost:5173',
-    'http://localhost:3001',
-    process.env.PUBLIC_URL,
-  ].filter(Boolean),
+  origin(origin, cb) {
+    // Không có Origin = gọi cùng tên miền, app di động, curl… → giữ nguyên như trước
+    if (!origin || allowedOrigins.includes(origin) || VERCEL_PROJECT.test(origin)) return cb(null, true);
+    console.warn(`[CORS] Từ chối origin lạ: ${origin}`);
+    return cb(null, false);
+  },
   credentials: true,
 }));
 
@@ -27,9 +42,12 @@ app.use(cors({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'admin/views'));
 
-// Body parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parsing — giới hạn kích thước để 1 request JSON khổng lồ không ngốn hết RAM
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Chặn chèn truy vấn MongoDB qua tham số (?field[$ne]=…) trên toàn bộ request
+app.use(require('./api/middleware/sanitizeMongo'));
 
 // Method override (hỗ trợ PUT/DELETE từ HTML form)
 app.use(methodOverride('_method'));
@@ -95,34 +113,6 @@ mongoose.connect(CONFIG.MONGO_URI)
 app.use((req, res, next) => {
   console.log(`[REQ] ${req.method} ${req.path}`);
   next();
-});
-
-// ── Debug: test Zalo getprofile v2 vs v3 (public, tạm thời) ────
-app.get('/debug-profile/:userId', async (req, res) => {
-  const axios = require('axios');
-  const { getToken } = require('./src/utils/zaloToken');
-  try {
-    const token = getToken();
-    const uid = req.params.userId;
-
-    // Test v2 getprofile (bị block IP ngoài VN)
-    const v2data = encodeURIComponent(JSON.stringify({ user_id: uid }));
-    const v2 = await axios.get(
-      `https://openapi.zalo.me/v2.0/oa/getprofile?data=${v2data}`,
-      { headers: { access_token: token } }
-    ).then(r => r.data).catch(e => ({ error: e.message }));
-
-    // Test v3 user/detail (cần permission Quản lý người dùng)
-    const v3data = encodeURIComponent(JSON.stringify({ user_id: uid }));
-    const v3 = await axios.get(
-      `https://openapi.zalo.me/v3.0/oa/user/detail?data=${v3data}`,
-      { headers: { access_token: token } }
-    ).then(r => r.data).catch(e => ({ error: e.message }));
-
-    res.json({ v2_getprofile: v2, v3_user_detail: v3, token_prefix: token.slice(0, 20) + '...' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // ── Webhook Zalo ──────────────────────────────────────

@@ -5,17 +5,33 @@ const CONFIG = require('../../src/config')
 const Feedback = require('../../src/models/Feedback')
 const Category = require('../../src/models/Category')
 const { uploadFromBuffer } = require('../../src/utils/cloudinary')
+const { rateLimit } = require('../middleware/rateLimit')
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 5 },
 })
 
+// Access token Zalo: ưu tiên header Authorization để token KHÔNG nằm trên URL
+// (URL bị ghi vào log Nginx, log trình duyệt và gửi kèm khi chuyển trang).
+// Vẫn chấp nhận query/body cho bản ReportApp cũ đang chạy.
+function getZaloAccessToken(req) {
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) return header.slice(7).trim()
+  const fromRequest = req.query?.accessToken || req.body?.accessToken
+  return typeof fromRequest === 'string' ? fromRequest : ''
+}
+
+// Chặn rút dữ liệu hàng loạt / dò mã qua các endpoint công khai
+const publicRead = rateLimit({ name: 'public-read', windowMs: 60 * 1000, max: 60 })
+const publicWrite = rateLimit({ name: 'public-write', windowMs: 10 * 60 * 1000, max: 10 })
+const publicLogin = rateLimit({ name: 'public-login', windowMs: 10 * 60 * 1000, max: 20 })
+
 // GET /api/public/categories — danh sách danh mục cho ReportApp chọn (ẩn zaloGroupId nội bộ,
 // tên đã bỏ tiền tố nội bộ để hiển thị gọn — VD "Môi trường, Hạ tầng" thay vì "An Hải_...")
 // Chỉ trả về danh mục ĐÃ map linhVucId 1022 (4 loại chính thức) — loại bỏ các danh mục phụ
 // trợ nội bộ (VD "Hỗ trợ OAZalo") hoặc rác test không dùng cho luồng góp ý công dân.
-router.get('/categories', async (req, res) => {
+router.get('/categories', publicRead, async (req, res) => {
   try {
     const { displayCategoryName, isMappedCategory } = require('../../src/services/cgy1022Service')
     const categories = await Category.find({}, 'name icon order').sort({ order: 1 }).lean()
@@ -29,7 +45,7 @@ router.get('/categories', async (req, res) => {
 // GET /api/public/reverse-geocode — ReportApp gọi ngay sau khi bấm "Lấy vị trí tự động" để
 // hiện tên địa chỉ ngay trên form (trước đây chỉ điền lúc submit, dân không thấy trước).
 // Dùng chung reverseGeocodeAddress() với luồng chatbot — không lặp logic gọi Nominatim.
-router.get('/reverse-geocode', async (req, res) => {
+router.get('/reverse-geocode', publicRead, async (req, res) => {
   try {
     const lat = parseFloat(req.query.lat)
     const lng = parseFloat(req.query.lng)
@@ -69,7 +85,7 @@ async function fetchZaloProfile(accessToken) {
 }
 
 // POST /api/public/zalo-login — đổi code lấy access_token + profile cho ReportApp
-router.post('/zalo-login', async (req, res) => {
+router.post('/zalo-login', publicLogin, async (req, res) => {
   try {
     const { code } = req.body
     if (!code) return res.status(400).json({ error: 'Thiếu code đăng nhập Zalo' })
@@ -83,9 +99,10 @@ router.post('/zalo-login', async (req, res) => {
 
 // POST /api/public/feedbacks — tạo phản ánh từ ReportApp (multipart, tối đa 5 ảnh)
 // Đẩy 1022 ĐỒNG BỘ trong request này — xem createFeedbackEntry() trong feedbackService.js
-router.post('/feedbacks', upload.array('images', 5), async (req, res) => {
+router.post('/feedbacks', publicWrite, upload.array('images', 5), async (req, res) => {
   try {
-    const { accessToken, contact, categoryId, title, content, address, lat, lng, source } = req.body
+    const { contact, categoryId, title, content, address, lat, lng, source } = req.body
+    const accessToken = getZaloAccessToken(req)
     if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
 
     const { createFeedbackEntry } = require('../../src/services/feedbackService')
@@ -143,9 +160,9 @@ router.post('/feedbacks', upload.array('images', 5), async (req, res) => {
 // đang đăng nhập. Dùng đúng ID OAuth (profile.id) — cùng ID đã ghi lúc tạo phản ánh qua
 // ReportApp, nên luôn khớp. KHÔNG dùng cho lệnh #theodoi trong chat (đó là ID webhook OA,
 // khác namespace với ID OAuth — 2 ID khác nhau cho cùng 1 người dùng, xem lookupService.js).
-router.get('/my-feedbacks', async (req, res) => {
+router.get('/my-feedbacks', publicRead, async (req, res) => {
   try {
-    const { accessToken } = req.query
+    const accessToken = getZaloAccessToken(req)
     if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
     const profile = await fetchZaloProfile(accessToken)
 
@@ -169,9 +186,9 @@ router.get('/my-feedbacks', async (req, res) => {
 
 // GET /api/public/my-feedbacks/:gopyId — trạng thái LIVE trực tiếp từ Cổng góp ý 1022
 // (không dùng trạng thái nội bộ) cho 1 phản ánh của CHÍNH người đang đăng nhập.
-router.get('/my-feedbacks/:gopyId', async (req, res) => {
+router.get('/my-feedbacks/:gopyId', publicRead, async (req, res) => {
   try {
-    const { accessToken } = req.query
+    const accessToken = getZaloAccessToken(req)
     if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
     const profile = await fetchZaloProfile(accessToken)
 
@@ -199,27 +216,36 @@ router.get('/my-feedbacks/:gopyId', async (req, res) => {
   }
 })
 
-// GET /api/public/map-markers — không cần auth, dùng cho bản đồ trang login
-// Chỉ trả về hồ sơ chưa giải quyết có tọa độ, không lộ thông tin nhạy cảm
-router.get('/map-markers', async (req, res) => {
+// GET /api/public/map-markers — không cần auth, dùng cho bản đồ trang login.
+// Đây là dữ liệu AI CŨNG XEM ĐƯỢC nên chỉ để lại mức tổng quan: danh mục, trạng thái, thời gian,
+// toạ độ làm tròn ~110m. KHÔNG trả nội dung phản ánh và địa chỉ chi tiết của công dân
+// (trước đây lộ 80 ký tự nội dung + địa chỉ đầy đủ, không giới hạn số lượng).
+const MAP_MARKER_LIMIT = 300;
+const MAP_MARKER_DAYS = 180;
+
+router.get('/map-markers', publicRead, async (req, res) => {
   try {
+    const since = new Date(Date.now() - MAP_MARKER_DAYS * 24 * 60 * 60 * 1000)
     const feedbacks = await Feedback.find({
       status: { $nin: ['resolved', 'done'] },
+      createdAt: { $gte: since },
       'location.lat': { $ne: null },
       'location.lng': { $ne: null },
     })
-      .select('location content categoryId createdAt status')
+      .select('location.lat location.lng categoryId createdAt status')
       .populate('categoryId', 'name icon')
+      .sort({ createdAt: -1 })
+      .limit(MAP_MARKER_LIMIT)
       .lean()
+
+    const round = (v) => Math.round(v * 1000) / 1000 // 3 chữ số thập phân ≈ 110m
 
     const markers = feedbacks.map((fb) => ({
       id: fb._id.toString().slice(-5).toUpperCase(),
-      lat: fb.location.lat,
-      lng: fb.location.lng,
-      address: fb.location.address || '',
+      lat: round(fb.location.lat),
+      lng: round(fb.location.lng),
       category: fb.categoryId?.name || 'Chưa phân loại',
       icon: fb.categoryId?.icon || '📋',
-      content: fb.content.slice(0, 80) + (fb.content.length > 80 ? '...' : ''),
       createdAt: fb.createdAt,
       status: fb.status,
     }))
@@ -231,7 +257,7 @@ router.get('/map-markers', async (req, res) => {
 })
 
 // POST /api/public/location-submit — nhận tọa độ GPS từ mini web page
-router.post('/location-submit', async (req, res) => {
+router.post('/location-submit', publicWrite, async (req, res) => {
   try {
     const { uid, lat, lng } = req.body
     if (!uid || lat == null || lng == null) {

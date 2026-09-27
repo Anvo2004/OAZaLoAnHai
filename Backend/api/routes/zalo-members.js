@@ -9,6 +9,10 @@ const {
   rejectGroupJoinRequest,
 } = require('../../src/utils/zaloApi')
 
+// Danh sách thành viên nhóm Zalo là dữ liệu nội bộ (tên + Zalo ID cán bộ) và trang "Cài đặt nhóm
+// Zalo" trên web chỉ hiện cho superadmin — chốt luôn ở server thay vì chỉ ẩn trên giao diện.
+router.use(requireRole('superadmin'))
+
 // Chuẩn hóa 1 thành viên đang chờ duyệt — Zalo có thể trả về string id hoặc object
 function normalizePendingMember(m) {
   if (typeof m === 'string') return { id: m, name: '', avatar: '' }
