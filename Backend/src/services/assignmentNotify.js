@@ -2,7 +2,7 @@ const AdminUser = require('../models/AdminUser')
 const Notification = require('../models/Notification')
 const { sendZaloToGroup, sendZaloText } = require('../utils/zaloApi')
 // Thông báo cho cán bộ được phân công (chuông app + @mention nhóm Zalo + tin nhắn Zalo cá nhân).
-// Dùng chung cho route phân công ở React API (api/routes/feedbacks.js) và admin EJS legacy (admin/routes/feedbacks.js)
+// Dùng cho route phân công ở API (api/routes/feedbacks.js)
 // để tránh tình trạng phân công qua 1 trong 2 nơi mà cán bộ không nhận được thông báo nào.
 async function notifyAssignment(feedback, assignedTo, { hasAttachments = false } = {}) {
   const officer = await AdminUser.findById(assignedTo, 'fullName zaloUserId').lean()

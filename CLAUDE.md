@@ -60,7 +60,7 @@ Admin (browser) → Frontend/Web/ (React SPA, Vercel)
 
 | Path | Purpose |
 |------|---------|
-| `Backend/server.js` | Express entry point; mounts `/webhook`, `/api`, `/admin`, serves `Frontend/Web/dist` |
+| `Backend/server.js` | Express entry point; mounts `/webhook`, `/api`, serves `Frontend/Web/dist` (dashboard) và `Frontend/ReportApp/dist` |
 | `Backend/src/config/index.js` | Single CONFIG object — all env vars with fallbacks |
 | `Backend/src/handlers/webhookHandler.js` | Routes Zalo events to feedbackService |
 | `Backend/src/services/feedbackService.js` | In-memory state machine for citizen feedback flow |
@@ -71,8 +71,7 @@ Admin (browser) → Frontend/Web/ (React SPA, Vercel)
 | `Backend/api/routes/` | REST API for React frontend — auth, feedbacks, users, categories, stats, broadcast |
 | `Backend/api/middleware/requireAuth.js` | Accepts JWT (React) **or** session cookie (EJS) |
 | `Backend/api/middleware/requireRole.js` | Role-based guard: superadmin / dept_leader / officer |
-| `Backend/admin/` | Legacy EJS admin panel at `/admin/*` (session auth, still functional) |
-| `Frontend/Web/` | React 19 + Vite + Tailwind + React Query — main admin dashboard |
+| `Frontend/Web/` | React 19 + Vite + Tailwind + React Query — dashboard quản trị duy nhất |
 
 ### Tự động đăng tin (anhai.danang.gov.vn → bài viết Zalo OA)
 
@@ -83,14 +82,15 @@ Admin (browser) → Frontend/Web/ (React SPA, Vercel)
 - Ảnh cover: Zalo từ chối ảnh ~1MB+ (lỗi -200 "Upload media failed" ở bước verify) → `coverImage.js` thu nhỏ qua Cloudinary; lỗi thì fallback `DANGTIN_DEFAULT_COVER_URL`.
 - Mặc định dry-run (`DANGTIN_SEND_ENABLED=false`); trạng thái "đã gửi" ở collection `dangtinitems`.
 
-### Two admin systems
+### Giao diện quản trị (chỉ còn React)
 
-1. **`Backend/admin/` (EJS)** — server-side rendered, session auth, at `/admin` route. Legacy but functional.
-2. **`Frontend/Web/` (React SPA)** — JWT auth, calls `/api/*`, deployed to Vercel; served from `/app/*` when `Frontend/Web/dist/` exists. Includes the broadcast/messages feature (superadmin only at `/messages`).
+**`Frontend/Web/` (React SPA)** — JWT auth, calls `/api/*`, deployed to Vercel; served from `/app*` when `Frontend/Web/dist/` exists. Includes the broadcast/messages feature (superadmin only at `/messages`).
 
-### Authentication dual-mode
+Trang quản trị EJS cũ (`Backend/admin/`) đã gỡ ngày 2026-09-30 — cùng với `ejs`, `connect-flash`, `method-override`. `/admin/*` nay không còn gì phục vụ (404), **trừ `/admin/set-tokens`** vẫn khai báo trong `server.js` để nạp token Zalo thủ công. Bản triển khai của thành phố tại `gopyanhai.1022.vn` đang dùng `/admin` nên phải chuyển sang `/app` sau khi cập nhật.
 
-`Backend/api/middleware/requireAuth.js` checks **JWT first** (Authorization: Bearer), then falls back to **express-session**. This lets React and EJS use the same API routes.
+### Authentication
+
+`Backend/api/middleware/requireAuth.js` checks **JWT first** (Authorization: Bearer), then falls back to **express-session**. Nhánh session còn lại từ thời trang EJS; `POST /api/auth/login` vẫn ghi `req.session.adminUser` nên `express-session` chưa gỡ được.
 
 ### Zalo token lifecycle
 

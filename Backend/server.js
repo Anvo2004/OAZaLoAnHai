@@ -3,8 +3,6 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const flash = require('connect-flash');
-const methodOverride = require('method-override');
 const mongoose = require('mongoose');
 const CONFIG = require('./src/config');
 const { handleWebhook } = require('./src/handlers/webhookHandler');
@@ -38,19 +36,12 @@ app.use(cors({
   credentials: true,
 }));
 
-// View engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'admin/views'));
-
 // Body parsing — giới hạn kích thước để 1 request JSON khổng lồ không ngốn hết RAM
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Chặn chèn truy vấn MongoDB qua tham số (?field[$ne]=…) trên toàn bộ request
 app.use(require('./api/middleware/sanitizeMongo'));
-
-// Method override (hỗ trợ PUT/DELETE từ HTML form)
-app.use(methodOverride('_method'));
 
 // Session
 app.use(session({
@@ -63,9 +54,6 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
   },
 }));
-
-// Flash messages
-app.use(flash());
 
 // Kết nối MongoDB + seed dữ liệu mặc định
 mongoose.connect(CONFIG.MONGO_URI)
@@ -231,10 +219,6 @@ function go(){
 const apiRouter = require('./api/routes/index');
 app.use('/api', apiRouter);
 
-// ── Admin dashboard router (EJS — giữ nguyên) ──────────
-const adminRouter = require('./admin/routes/index');
-app.use('/admin', adminRouter);
-
 // ── Các route khác ──────────────────────────────────────
 app.get('/zalo_verifierMy2z1PYq6XmTWRKu-gqbEpgZaXZMrKT1CJCm.html', (req, res) => {
   res.type('html').send('There Is No Limit To What You Can Accomplish Using Zalo!');
@@ -289,5 +273,5 @@ if (require('fs').existsSync(reportDist)) {
 app.listen(CONFIG.PORT, () => {
   console.log(`\n🚀 Server An Hải Góp ý chạy tại http://localhost:${CONFIG.PORT}`);
   console.log(`📡 Webhook URL: http://localhost:${CONFIG.PORT}/webhook`);
-  console.log(`🖥️  Admin Dashboard: http://localhost:${CONFIG.PORT}/admin\n`);
+  console.log(`🖥️  Dashboard quản trị: http://localhost:${CONFIG.PORT}/app\n`);
 });
