@@ -82,6 +82,12 @@ Admin (browser) → Frontend/Web/ (React SPA, Vercel)
 - Ảnh cover: Zalo từ chối ảnh ~1MB+ (lỗi -200 "Upload media failed" ở bước verify) → `coverImage.js` thu nhỏ qua Cloudinary; lỗi thì fallback `DANGTIN_DEFAULT_COVER_URL`.
 - Mặc định dry-run (`DANGTIN_SEND_ENABLED=false`); trạng thái "đã gửi" ở collection `dangtinitems`.
 
+### ReportApp — form góp ý công dân (Frontend/ReportApp, /report)
+
+- Đăng nhập Zalo OAuth → `POST /api/public/zalo-login` upsert `Citizen` và trả `consent {granted, phone}`. Chưa đồng ý → `PhoneConsentDialog` → `POST /api/public/phone-consent` lưu SĐT; lần sau form tự điền.
+- `POST /api/public/feedbacks` chỉ lấy SĐT từ `Citizen` có `phoneConsent: true` — **không bao giờ** từ body. Chưa đồng ý → 403 `PHONE_CONSENT_REQUIRED`. (Zalo `/me?fields=phone` thực tế không trả SĐT nên không dựa vào đó.)
+- Payload 1022 gửi `email: ''` cố định — không gửi email hệ thống thay cho người dân (trước đây hiện `gopy@anhai.dxvtech.vn` trên 1022).
+
 ### Giao diện quản trị (chỉ còn React)
 
 **`Frontend/Web/` (React SPA)** — JWT auth, calls `/api/*`, deployed to Vercel; served from `/app*` when `Frontend/Web/dist/` exists. Includes the broadcast/messages feature (superadmin only at `/messages`).

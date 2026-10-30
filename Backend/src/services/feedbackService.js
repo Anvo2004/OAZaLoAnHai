@@ -22,7 +22,7 @@ const DA_NANG_URBAN_VIEWBOX = '108.05,16.18,108.33,15.95';
 // nên KHÔNG gắn cứng tên quận/phường vào query — dùng viewbox để ưu tiên kết quả trong An Hải.
 async function geocodeAddress(address) {
   const axios = require('axios');
-  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' };
+  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0' };
   const query = `${address}, Đà Nẵng, Việt Nam`;
 
   const search = (viewbox) => axios.get('https://nominatim.openstreetmap.org/search', {
@@ -56,7 +56,7 @@ async function geocodeAddress(address) {
 // chuỗi tọa độ thô "16.06, 108.21" cho dân và cán bộ.
 async function reverseGeocodeAddress(lat, lng) {
   const axios = require('axios');
-  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0 (gopy@anhai.dxvtech.vn)' };
+  const headers = { 'User-Agent': 'UBND-AnHai-GopY/1.0' };
   try {
     const res = await axios.get('https://nominatim.openstreetmap.org/reverse', {
       params: { lat, lon: lng, format: 'json', 'accept-language': 'vi' },
@@ -74,7 +74,14 @@ async function reverseGeocodeAddress(lat, lng) {
 const imageBatchBuffer = new Map();
 
 function isPhone(text) {
-  return /^(0|\+84)[3-9]\d{8}$/.test(text.replace(/\s/g, ''));
+  return /^(0|\+84)[3-9]\d{8}$/.test(String(text || '').replace(/\s/g, ''));
+}
+
+// Chuẩn hoá SĐT về dạng 0xxxxxxxxx (Zalo trả dạng 84xxxxxxxxx)
+function normalizePhone(text) {
+  const digits = String(text || '').replace(/[^\d+]/g, '');
+  if (/^\+?84[3-9]\d{8}$/.test(digits)) return `0${digits.replace(/^\+?84/, '')}`;
+  return digits;
 }
 
 function isUrl(text) {
@@ -636,5 +643,5 @@ function isFeedbackTrigger(text) {
 
 module.exports = {
   startFeedback, promptReportApp, promptReportAppHistory, handleText, handleImage, handleContactCard, handleLocation, isFeedbackTrigger,
-  geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone,
+  geocodeAddress, reverseGeocodeAddress, createFeedbackEntry, isPhone, normalizePhone,
 };

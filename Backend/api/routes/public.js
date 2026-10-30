@@ -4,7 +4,9 @@ const multer = require('multer')
 const CONFIG = require('../../src/config')
 const Feedback = require('../../src/models/Feedback')
 const Category = require('../../src/models/Category')
+const Citizen = require('../../src/models/Citizen')
 const { uploadFromBuffer } = require('../../src/utils/cloudinary')
+const { isPhone, normalizePhone } = require('../../src/services/feedbackService')
 const { rateLimit } = require('../middleware/rateLimit')
 
 const upload = multer({
@@ -26,6 +28,7 @@ function getZaloAccessToken(req) {
 const publicRead = rateLimit({ name: 'public-read', windowMs: 60 * 1000, max: 60 })
 const publicWrite = rateLimit({ name: 'public-write', windowMs: 10 * 60 * 1000, max: 10 })
 const publicLogin = rateLimit({ name: 'public-login', windowMs: 10 * 60 * 1000, max: 20 })
+const publicConsent = rateLimit({ name: 'public-consent', windowMs: 10 * 60 * 1000, max: 20 })
 
 // GET /api/public/categories — danh sách danh mục cho ReportApp chọn (ẩn zaloGroupId nội bộ,
 // tên đã bỏ tiền tố nội bộ để hiển thị gọn — VD "Môi trường, Hạ tầng" thay vì "An Hải_...")
@@ -73,27 +76,110 @@ async function exchangeCodeForToken(code) {
 }
 
 // Lấy profile thật từ Zalo bằng access_token — verify server-side, không tin userId
-// do client tự gửi (tránh giả mạo danh tính để gửi phản ánh thay người khác)
+// do client tự gửi (tránh giả mạo danh tính để gửi phản ánh thay người khác).
+// Trường phone chỉ có khi app được Zalo duyệt quyền SĐT — thực tế thường rỗng, nên SĐT lấy qua
+// thông báo xin phép trên ReportApp (POST /phone-consent), phone ở đây chỉ dùng để điền sẵn.
+// Token hết hạn / không hợp lệ → lỗi mang status 401.
 async function fetchZaloProfile(accessToken) {
-  const profileRes = await axios.get('https://graph.zalo.me/v2.0/me', {
-    params: { fields: 'id,name,picture,phone' },
-    headers: { access_token: accessToken },
-  })
+  let profileRes
+  try {
+    profileRes = await axios.get('https://graph.zalo.me/v2.0/me', {
+      params: { fields: 'id,name,picture,phone' },
+      headers: { access_token: accessToken },
+      timeout: 10000,
+    })
+  } catch (e) {
+    throw Object.assign(new Error(`Không kết nối được Zalo: ${e.message}`), { status: 502 })
+  }
   const { id, name, picture, phone } = profileRes.data || {}
-  if (!id) throw new Error(`Không lấy được thông tin Zalo: ${JSON.stringify(profileRes.data)}`)
-  return { id: String(id), name: name || '', avatar: picture?.data?.url || '', phone: phone || '' }
+  if (!id) {
+    throw Object.assign(new Error('Phiên đăng nhập Zalo đã hết hạn, vui lòng đăng nhập lại'), { status: 401 })
+  }
+  return { id: String(id), name: name || '', avatar: picture?.data?.url || '', phone: phone ? normalizePhone(phone) : '' }
 }
 
-// POST /api/public/zalo-login — đổi code lấy access_token + profile cho ReportApp
+// Trạng thái cho phép sử dụng SĐT trả về cho ReportApp:
+// - granted=true  → đã đồng ý trước đó, form tự điền phone, KHÔNG hỏi lại
+// - granted=false → hiện thông báo xin phép; suggestedPhone là SĐT Zalo trả về (nếu có) để điền sẵn
+function consentInfo(citizen, profile) {
+  if (citizen?.phoneConsent && citizen.phone) {
+    return { granted: true, phone: citizen.phone, grantedAt: citizen.phoneConsentAt }
+  }
+  return { granted: false, phone: '', suggestedPhone: profile.phone || '' }
+}
+
+// POST /api/public/zalo-login — đổi code lấy access_token + profile cho ReportApp,
+// đồng thời lưu/cập nhật người dân vào DB và trả trạng thái cho phép sử dụng SĐT.
 router.post('/zalo-login', publicLogin, async (req, res) => {
   try {
     const { code } = req.body
-    if (!code) return res.status(400).json({ error: 'Thiếu code đăng nhập Zalo' })
+    if (!code || typeof code !== 'string') return res.status(400).json({ error: 'Thiếu code đăng nhập Zalo' })
     const accessToken = await exchangeCodeForToken(code)
     const profile = await fetchZaloProfile(accessToken)
-    res.json({ accessToken, profile })
+
+    const citizen = await Citizen.findOneAndUpdate(
+      { zaloId: profile.id },
+      { $set: { name: profile.name, avatar: profile.avatar, lastLoginAt: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean()
+
+    res.json({
+      accessToken,
+      profile: { id: profile.id, name: profile.name, avatar: profile.avatar },
+      consent: consentInfo(citizen, profile),
+    })
   } catch (err) {
     res.status(400).json({ error: err.message })
+  }
+})
+
+// POST /api/public/phone-consent — người dân bấm "Đồng ý" cho phép sử dụng SĐT.
+// Lưu SĐT + thời điểm đồng ý vào DB → các lần sau không hỏi lại, form tự điền.
+// Gọi lại endpoint này để đổi sang SĐT khác.
+router.post('/phone-consent', publicConsent, async (req, res) => {
+  try {
+    const accessToken = getZaloAccessToken(req)
+    if (!accessToken) return res.status(401).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
+    const phone = normalizePhone(req.body?.phone)
+    if (!isPhone(phone)) {
+      return res.status(400).json({ error: 'Số điện thoại không hợp lệ (VD: 0912345678)' })
+    }
+    const profile = await fetchZaloProfile(accessToken)
+
+    const citizen = await Citizen.findOneAndUpdate(
+      { zaloId: profile.id },
+      {
+        $set: {
+          name: profile.name,
+          avatar: profile.avatar,
+          phone,
+          phoneConsent: true,
+          phoneConsentAt: new Date(),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean()
+
+    res.json({ ok: true, consent: consentInfo(citizen, profile) })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/public/phone-consent — người dân thu hồi quyền sử dụng SĐT (xoá SĐT đã lưu).
+// Lần gửi phản ánh sau sẽ được hỏi lại.
+router.delete('/phone-consent', publicConsent, async (req, res) => {
+  try {
+    const accessToken = getZaloAccessToken(req)
+    if (!accessToken) return res.status(401).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
+    const profile = await fetchZaloProfile(accessToken)
+    await Citizen.updateOne(
+      { zaloId: profile.id },
+      { $set: { phone: '', phoneConsent: false, phoneConsentAt: null } }
+    )
+    res.json({ ok: true, consent: { granted: false, phone: '', suggestedPhone: '' } })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
   }
 })
 
@@ -101,9 +187,9 @@ router.post('/zalo-login', publicLogin, async (req, res) => {
 // Đẩy 1022 ĐỒNG BỘ trong request này — xem createFeedbackEntry() trong feedbackService.js
 router.post('/feedbacks', publicWrite, upload.array('images', 5), async (req, res) => {
   try {
-    const { contact, categoryId, title, content, address, lat, lng, source } = req.body
+    const { categoryId, title, content, address, lat, lng, source } = req.body
     const accessToken = getZaloAccessToken(req)
-    if (!accessToken) return res.status(400).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
+    if (!accessToken) return res.status(401).json({ error: 'Thiếu thông tin đăng nhập Zalo' })
 
     const { createFeedbackEntry } = require('../../src/services/feedbackService')
     if (!title || title.trim().length < 5) {
@@ -114,6 +200,15 @@ router.post('/feedbacks', publicWrite, upload.array('images', 5), async (req, re
     }
 
     const profile = await fetchZaloProfile(accessToken)
+
+    // SĐT chỉ lấy từ bản ghi người dân ĐÃ đồng ý cho phép sử dụng — không nhận SĐT tuỳ ý từ form
+    const citizen = await Citizen.findOne({ zaloId: profile.id }).lean()
+    if (!citizen?.phoneConsent || !citizen.phone) {
+      return res.status(403).json({
+        error: 'Bạn cần cho phép sử dụng số điện thoại trước khi gửi phản ánh',
+        code: 'PHONE_CONSENT_REQUIRED',
+      })
+    }
 
     let category = null
     if (categoryId) category = await Category.findById(categoryId).lean()
@@ -135,7 +230,7 @@ router.post('/feedbacks', publicWrite, upload.array('images', 5), async (req, re
     const { sync } = await createFeedbackEntry({
       userId: profile.id,
       displayName: profile.name,
-      contact: contact.trim(),
+      contact: citizen.phone,
       title: title.trim(),
       content: content.trim(),
       categoryId: category?._id || null,
@@ -149,10 +244,11 @@ router.post('/feedbacks', publicWrite, upload.array('images', 5), async (req, re
       ok: true,
       code: sync.ok ? sync.gopyId : null,
       pending: !sync.ok,
+      contact: citizen.phone,
     })
   } catch (err) {
     console.error('[ReportApp] Lỗi tạo phản ánh:', err.message)
-    res.status(500).json({ error: err.message })
+    res.status(err.status || 500).json({ error: err.message })
   }
 })
 

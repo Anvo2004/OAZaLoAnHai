@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Loader2, Send, Pencil, Sparkles, X, ClipboardList } from 'lucide-react'
+import { MapPin, Loader2, Send, Pencil, Sparkles, X, ClipboardList, Phone, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import BlobBackground from '@/components/BlobBackground'
-import { api } from '@/lib/api'
+import { api, authHeader } from '@/lib/api'
 
 const ACCENT = 'linear-gradient(135deg,#059669 0%,#0d9488 40%,#0891b2 74%,#0ea5e9 100%)'
 
@@ -52,11 +52,11 @@ function tryBrowserGeo(onSuccess, onError) {
   )
 }
 
-export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHistory }) {
+export default function FeedbackForm({ profile, accessToken, consent, onRequestConsent, onConsentRequired, onSuccess, onShowHistory }) {
+  const phoneGranted = !!(consent?.granted && consent.phone)
   const [categories, setCategories] = useState([])
   const [categoryId, setCategoryId] = useState('')
   const [title, setTitle] = useState('')
-  const [contact, setContact] = useState(profile.phone || '')
   const [content, setContent] = useState('')
   const [images, setImages] = useState([]) // [{file, previewUrl}]
   const [address, setAddress] = useState('')
@@ -122,10 +122,12 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
       setError('Nội dung phản ánh cần ít nhất 5 ký tự')
       return
     }
+    if (!phoneGranted) {
+      onRequestConsent()
+      return
+    }
 
     const formData = new FormData()
-    formData.append('accessToken', accessToken)
-    formData.append('contact', contact.trim())
     formData.append('title', title.trim())
     formData.append('content', content.trim())
     if (categoryId) formData.append('categoryId', categoryId)
@@ -141,14 +143,14 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
 
     setSubmitting(true)
     try {
-      const res = await api.post('/feedbacks', formData)
+      const res = await api.post('/feedbacks', formData, authHeader(accessToken))
       const catObj = categories.find(c => c._id === categoryId)
       const catLabel = catObj ? `${catObj.icon ? catObj.icon + ' ' : ''}${catObj.name}` : ''
       onSuccess({
         code: res.data.code,
         pending: res.data.pending,
         title,
-        contact,
+        contact: res.data.contact,
         content,
         address,
         categoryName: catLabel,
@@ -156,6 +158,8 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
       })
     } catch (err) {
       setError(err.response?.data?.error || 'Có lỗi xảy ra, vui lòng thử lại')
+      // Quyền SĐT đã bị thu hồi ở nơi khác → hỏi lại
+      if (err.response?.data?.code === 'PHONE_CONSENT_REQUIRED') onConsentRequired()
     } finally {
       setSubmitting(false)
     }
@@ -189,6 +193,30 @@ export default function FeedbackForm({ profile, accessToken, onSuccess, onShowHi
       <Card className="mx-auto max-w-md animate-fade-in" style={{ boxShadow: '0 18px 46px -22px rgba(6,95,70,0.42)' }}>
         <CardContent className="pt-6">
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* SĐT liên hệ — tự điền từ lần người dân đã cho phép sử dụng */}
+            <div className="space-y-2">
+              <Label>Số điện thoại liên hệ</Label>
+              {phoneGranted ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-slate-50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <Phone className="h-4 w-4 text-muted-foreground" /> {consent.phone}
+                  </span>
+                  <button type="button" onClick={onRequestConsent} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                    Đổi số
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-2">
+                  <p className="text-xs text-amber-800">
+                    Cần cho phép sử dụng số điện thoại để cán bộ liên hệ, xác minh và gửi phản ánh lên Cổng góp ý thành phố.
+                  </p>
+                  <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={onRequestConsent}>
+                    <ShieldCheck className="h-4 w-4" /> Cho phép sử dụng số điện thoại
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Loại phản ánh</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>

@@ -113,7 +113,10 @@ function buildPayload(fb) {
   const payload = {
     userId: Number(CONFIG.CGY1022_USER_ID) || 0,
     tenDayDu: fb.displayName || 'Người dân phường An Hải',
-    email: CONFIG.CGY1022_DEFAULT_EMAIL,
+    // Không gửi email mặc định của hệ thống (trước đây gopy@anhai.dxvtech.vn hiện trên 1022 như
+    // email người dân). Không đọc từ .env nữa để biến CGY1022_DEFAULT_EMAIL còn sót trên VPS
+    // không làm email này quay lại. Người dân liên hệ qua SĐT đã cho phép (Citizen.phone).
+    email: '',
     // 1022 luôn nhận SĐT thật (mọi loại) — cơ quan xử lý cần liên hệ trực tiếp bất kể lĩnh
     // vực. Ẩn/hiện SĐT chỉ áp dụng ở phía hệ thống An Hải (dashboard/nhóm nội bộ), xem
     // shouldShowPhone() dùng trong feedbackService.js và api/routes/feedbacks.js.
